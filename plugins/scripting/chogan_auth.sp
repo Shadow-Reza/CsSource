@@ -1114,7 +1114,7 @@ public Action Timer_SqlPoll(Handle timer, any serial)
 
 	char query[256];
 	FormatEx(query, sizeof(query),
-		"SELECT verdict, account_id, display_name, reason, api_down FROM cg_auth_requests WHERE id = %d AND verdict IS NOT NULL",
+		"SELECT verdict, account_id, display_name, reason, api_down, source, cache_hit FROM cg_auth_requests WHERE id = %d AND verdict IS NOT NULL",
 		g_iSqlRowId[client]);
 	g_hDb.Query(OnSqlPoll, query, serial);
 	return Plugin_Continue;
@@ -1174,14 +1174,29 @@ public void OnSqlPoll(Database db, DBResultSet results, const char[] error, any 
 	{
 		apiDown = (results.FetchInt(4) != 0);
 	}
+	char src[16];
+	src[0] = ' ';
+	if (!results.IsFieldNull(5))
+	{
+		results.FetchString(5, src, sizeof(src));
+	}
+	bool cacheHit = false;
+	if (!results.IsFieldNull(6))
+	{
+		cacheHit = (results.FetchInt(6) != 0);
+	}
 
 	if (StrEqual(verdict, "ok", false) && accountId > 0)
 	{
 		BreakerSuccess();
 		char why[32];
-		if (StrEqual(reason, "cache", false) || StrContains(reason, "cache", false) != -1)
+		if (cacheHit || StrEqual(src, "cache", false))
 		{
 			strcopy(why, sizeof(why), "ok_agent_cache");
+		}
+		else if (src[0] != ' ')
+		{
+			FormatEx(why, sizeof(why), "ok_%s", src);
 		}
 		else
 		{
