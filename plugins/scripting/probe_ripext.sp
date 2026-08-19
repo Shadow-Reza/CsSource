@@ -34,7 +34,14 @@
 #pragma newdecls required
 
 #include <sourcemod>
+
+/* RIPExt is OPTIONAL at load time on purpose: if rip.ext fails to load, this probe must
+ * still come up and log WHY (GetExtensionFileStatus error string) instead of failing
+ * silently with "required extension ... failed". All RIPExt natives are marked optional
+ * below and only called after LibraryExists("ripext"). */
+#undef REQUIRE_EXTENSIONS
 #include <ripext>
+#define REQUIRE_EXTENSIONS
 
 #define PLUGIN_VERSION "0.1.0"
 
@@ -57,6 +64,27 @@ public Plugin myinfo =
 char  g_sUrl[MAX_INFLIGHT][256];
 float g_fStart[MAX_INFLIGHT];
 bool  g_bBusy[MAX_INFLIGHT];
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+	/* names as registered in sm-ripext 1.3.2 http_natives.cpp / json_natives.cpp */
+	MarkNativeAsOptional("HTTPRequest.HTTPRequest");
+	MarkNativeAsOptional("HTTPRequest.SetHeader");
+	MarkNativeAsOptional("HTTPRequest.Get");
+	MarkNativeAsOptional("HTTPRequest.Post");
+	MarkNativeAsOptional("HTTPRequest.ConnectTimeout.get");
+	MarkNativeAsOptional("HTTPRequest.ConnectTimeout.set");
+	MarkNativeAsOptional("HTTPRequest.Timeout.get");
+	MarkNativeAsOptional("HTTPRequest.Timeout.set");
+	MarkNativeAsOptional("HTTPResponse.Status.get");
+	MarkNativeAsOptional("HTTPResponse.Data.get");
+	MarkNativeAsOptional("HTTPResponse.GetHeader");
+	MarkNativeAsOptional("JSONObject.JSONObject");
+	MarkNativeAsOptional("JSONObject.SetBool");
+	MarkNativeAsOptional("JSONObject.SetString");
+	MarkNativeAsOptional("JSON.ToString");
+	return APLRes_Success;
+}
 
 public void OnPluginStart()
 {
@@ -136,6 +164,11 @@ int AllocTag(const char[] url)
 
 int DoGet(const char[] url)
 {
+	if (!LibraryExists("ripext"))
+	{
+		PLog("RESULT url=%s verdict=FAIL error=\"RIPExt (rip.ext) is not loaded - see GetExtensionFileStatus line above and addons/sourcemod/logs/errors_*.log\"", url);
+		return -1;
+	}
 	int tag = AllocTag(url);
 	if (tag < 0)
 	{
@@ -154,6 +187,11 @@ int DoGet(const char[] url)
 
 int DoPost(const char[] url)
 {
+	if (!LibraryExists("ripext"))
+	{
+		PLog("RESULT url=%s verdict=FAIL error=\"RIPExt (rip.ext) is not loaded\"", url);
+		return -1;
+	}
 	int tag = AllocTag(url);
 	if (tag < 0)
 	{

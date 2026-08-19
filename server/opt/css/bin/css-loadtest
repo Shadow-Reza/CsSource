@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""css-loadtest — MISSION §5 probe 4. Fill instances with Valve bots, sample server FPS 10x per instance
+(`stats` via RCON), measure per-instance CPU (cgroup CPUUsageNSec delta) and RSS (cgroup MemoryCurrent + ps RSS),
+with and without smac_wallhack. Prints a markdown table and writes JSON to /var/log/css/loadtest-<ts>.json.
+Usage: css-loadtest [--instances pub1,pub2,...] [--bots N|max] [--settle 60] [--samples 10] [--interval 3] [--no-wallhack-phase]
+Must run as root on the box (reads secrets for RCON, systemctl show)."""
+import argparse, json, os, re, subprocess, sys, time
+def sh(*a):
+    return subprocess.run(a, capture_output=True, text=True).stdout.strip()
+def rcon(inst, cmd):
+    return sh("/opt/css/bin/css-rcon", inst, cmd)
+def env_of(inst):
+    d = {}
+    for line in open(f"/opt/css/etc/instances/{inst}.env"):
+        m = re.match(r"^(\w+)=(.*)$", line.strip())
+        if m: d[m.group(1)] = m.group(2).strip('"')
+    return d
+def cpu_ns(inst):
+    return int(sh("systemctl", "show", f"css@{inst}", "-p", "CPUUsageNSec", "--value") or 0)
+def mem_bytes(inst):
+    return int(sh("systemctl", "show", f"css@{inst}", "-p", "MemoryCurrent", "--value") or 0)
+def rss_kb(inst):
+    pid = sh("systemctl", "show", f"css@{inst}", "-p", "MainPID", "--value")
+    try: return int(open(f"/proc/{pid}/status").read().split("VmRSS:")[1].split()[0])
+    except Exception: return 0
+def parse_stats(txt):
+    # CPU    In_(KB/s)  Out_(KB/s)  Uptime  Map_changes  FPS      Players  Connects
+    for line in txt.splitlines():
+        parts = line.split()
+        if len(parts) >= 8 and re.match(r"^[\d.]+$", parts[0]) and re.match(r"^[\d.]+$", parts[5]):
+            return {"cpu": float(parts[0]), "in": float(parts[1]), "out": float(parts[2]), "fps": float(parts[5]), "players": int(parts[6])}
+    return None
+STRESS_SMX = "/opt/css/dist/loadtest/smac_wallhack_stressbots.smx"
+def stage_stress_plugin(insts):
+    """smac_wallhack ignores fake clients as receivers, so a bot-only test would measure nothing. Stage the load-test
+    variant (bots treated as receivers): its OnGameFrame visibility traces then run for every bot pair exactly as for
+    humans (the SetTransmit part is cheap and is not exercised: CS:S v92 has no sv_stressbots, bots get no snapshots).
+    The production smac_wallhack is unloaded for the test and restored afterwards."""
+    for i in insts:
+        dst = f"/opt/css/instances/{i}/root/cstrike/addons/sourcemod/plugins/smac_wallhack_stressbots.smx"
+        if os.path.exists(STRESS_SMX):
+            subprocess.run(["install", "-m", "0644", "-o", f"css-{i}", "-g", "css", STRESS_SMX, dst])
+        rcon(i, "sm plugins unload smac_wallhack; sm plugins unload smac_wallhack_stressbots")
+def unstage_stress_plugin(insts):
+    for i in insts:
+        rcon(i, "sm plugins unload smac_wallhack_stressbots; sm plugins load smac_wallhack")
+        try: os.remove(f"/opt/css/instances/{i}/root/cstrike/addons/sourcemod/plugins/smac_wallhack_stressbots.smx")
+        except OSError: pass
+def phase(name, insts, args, wallhack):
+    for i in insts:
+        if wallhack:
+            rcon(i, "sm plugins load smac_wallhack_stressbots; smac_wallhack 1")
+        else:
+            rcon(i, "sm plugins unload smac_wallhack_stressbots")
+    time.sleep(8)
+    c0 = {i: cpu_ns(i) for i in insts}; t0 = time.time()
+    samples = {i: [] for i in insts}
+    for k in range(args.samples):
+        for i in insts:
+            s = parse_stats(rcon(i, "stats"))
+            if s: samples[i].append(s)
+        time.sleep(args.interval)
+    dt = time.time() - t0
+    out = {}
+    for i in insts:
+        cpu_pct = (cpu_ns(i) - c0[i]) / 1e9 / dt * 100.0
+        fps = [s["fps"] for s in samples[i]]
+        out[i] = {"wallhack": wallhack, "cpu_pct_of_one_core": round(cpu_pct, 1), "rss_mb": round(rss_kb(i) / 1024, 1),
+                  "cgroup_mem_mb": round(mem_bytes(i) / 1048576, 1), "fps_samples": fps,
+                  "fps_min": min(fps) if fps else None, "fps_avg": round(sum(fps) / len(fps), 2) if fps else None, "fps_max": max(fps) if fps else None,
+                  "players": samples[i][-1]["players"] if samples[i] else None, "window_sec": round(dt, 1)}
+    return out
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--instances", default="pub1,pub2,dm,gg,awp,m1,m2")
+    ap.add_argument("--bots", default="max")
+    ap.add_argument("--settle", type=int, default=60)
+    ap.add_argument("--samples", type=int, default=10)
+    ap.add_argument("--interval", type=float, default=3.0)
+    ap.add_argument("--no-wallhack-phase", action="store_true")
+    ap.add_argument("--restore-bots", default=None, help="bot_quota to restore afterwards (default: from mode cfg, i.e. exec mode cfg)")
+    args = ap.parse_args()
+    insts = [i for i in args.instances.split(",") if sh("systemctl", "is-active", f"css@{i}") == "active"]
+    if not insts: print("no active instances"); sys.exit(1)
+    hostinfo = {"nproc": os.cpu_count(), "loadavg_before": os.getloadavg(), "kernel": sh("uname", "-r")}
+    envs = {i: env_of(i) for i in insts}
+    for i in insts:
+        maxp = int(envs[i].get("CSS_MAXPLAYERS", "24"))
+        q = maxp - 1 if args.bots == "max" else int(args.bots)
+        rcon(i, f"bot_join_after_player 0; bot_quota_mode normal; bot_quota {q}")
+    print(f"filling {insts} with bots, settling {args.settle}s ...", flush=True)
+    time.sleep(args.settle)
+    results = {"host": hostinfo, "instances": {i: {"tick": envs[i].get("CSS_TICKRATE"), "slots": envs[i].get("CSS_MAXPLAYERS"), "mode": envs[i].get("CSS_MODE")} for i in insts}, "phases": {}}
+    stage_stress_plugin(insts)
+    results["phases"]["wallhack_on"] = phase("wallhack_on", insts, args, True)
+    if not args.no_wallhack_phase:
+        results["phases"]["wallhack_off"] = phase("wallhack_off", insts, args, False)
+    unstage_stress_plugin(insts)
+    results["host"]["loadavg_after"] = os.getloadavg()
+    # totals
+    for ph, d in results["phases"].items():
+        d["_total_cpu_pct"] = round(sum(v["cpu_pct_of_one_core"] for v in d.values() if isinstance(v, dict)), 1)
+        d["_total_rss_mb"] = round(sum(v["rss_mb"] for v in d.values() if isinstance(v, dict)), 1)
+    ts = time.strftime("%Y%m%d-%H%M%S"); os.makedirs("/var/log/css", exist_ok=True)
+    path = f"/var/log/css/loadtest-{ts}.json"; json.dump(results, open(path, "w"), indent=1)
+    # markdown
+    print(f"\n## Load test {ts} — {hostinfo['nproc']} vCPU, loadavg before {hostinfo['loadavg_before']} after {results['host']['loadavg_after']}")
+    for ph, d in results["phases"].items():
+        print(f"\n### {ph}\n| instance | mode | tick | slots | players | CPU % (1 core) | RSS MB | FPS min/avg/max | 10 FPS samples |\n|---|---|---|---|---|---|---|---|---|")
+        for i in insts:
+            v = d[i]; m = results["instances"][i]
+            print(f"| {i} | {m['mode']} | {m['tick']} | {m['slots']} | {v['players']} | {v['cpu_pct_of_one_core']} | {v['rss_mb']} | {v['fps_min']}/{v['fps_avg']}/{v['fps_max']} | {' '.join(str(x) for x in v['fps_samples'])} |")
+        print(f"| **total** | | | | | **{d['_total_cpu_pct']}** | **{d['_total_rss_mb']}** | | |")
+    for i in insts:  # restore bot settings from the mode cfg
+        rcon(i, f"exec mode_{envs[i].get('CSS_MODE','public')}.cfg")
+    print(f"\njson: {path}")
+if __name__ == "__main__":
+    main()
