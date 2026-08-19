@@ -559,11 +559,10 @@ public Action Cmd_DM(int client, int args)
 		g_cvRespawnDelay.FloatValue, g_cvHealth.IntValue, g_cvArmor.IntValue, g_cvMoney.IntValue);
 	ReplyToCommand(client, "  protect=%.1fs alpha=%d  full_ammo=%d  antistuck=%d",
 		g_cvProtect.FloatValue, g_cvProtectAlpha.IntValue, g_cvFullAmmo.IntValue, g_cvAntiStuck.IntValue);
-	ReplyToCommand(client, "  mode=%d (%s)%s%s",
-		g_cvMode.IntValue,
-		g_cvMode.IntValue == 1 ? "give weapon set" : "buy DM",
-		g_cvMode.IntValue == 1 ? "  weapons=" : "",
-		g_cvMode.IntValue == 1 ? weapons : "");
+	if (g_cvMode.IntValue == 1)
+		ReplyToCommand(client, "  mode=1 (give weapon set)  weapons=%s", weapons);
+	else
+		ReplyToCommand(client, "  mode=0 (buy DM)");
 	ReplyToCommand(client, "  players: %d alive, %d protected", alive, prot);
 	return Plugin_Handled;
 }
