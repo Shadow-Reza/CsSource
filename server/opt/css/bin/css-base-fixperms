@@ -9,4 +9,5 @@ fi
 chown -R cssbase:css "$BASE"
 find "$BASE" -type d -exec chmod 2775 {} +
 find "$BASE" -type f -exec chmod u+rw,g+rw,o+r {} +
+find "$BASE" -type f -perm /111 -exec chmod ugo+x {} +
 echo "css-base-fixperms: done ($(find "$BASE" -type f | wc -l) files)"

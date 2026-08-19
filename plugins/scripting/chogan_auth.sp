@@ -67,6 +67,8 @@
 #include <ripext>
 #define REQUIRE_EXTENSIONS
 
+/* we ARE chogan_auth: do not declare a SharedPlugin dependency on ourselves */
+#define CHOGAN_AUTH_IMPLEMENTATION
 #include <chogan>
 
 #define PLUGIN_VERSION  CHOGAN_AUTH_VERSION

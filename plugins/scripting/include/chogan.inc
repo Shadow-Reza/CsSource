@@ -1,11 +1,25 @@
 /**
  * chogan.inc — public API of chogan_auth.smx (Chogan phone-account auth for CS:S).
  *
- * MISSION §6.3: the SourceMod plugin reads the launcher ticket from `setinfo lt`,
- * redeems it against the local cg-agent asynchronously and then either binds the
- * account or kicks. Other plugins (stats, match, admin) consume the result through
- * these natives / forwards instead of touching SteamIDs (MISSION §3: never key
- * identity on SteamID — the phone account is the identity).
+ * MISSION §6.3: the SourceMod plugin reads the launcher ticket from `setinfo lt`
+ * (or the `cg_ticket <token>` console command), redeems it against the local
+ * cg-agent asynchronously and then either binds the account or kicks. Other
+ * plugins (stats, match, admin) consume the result through these natives /
+ * forwards instead of touching SteamIDs (MISSION §3: never key identity, bans or
+ * admin on SteamID — the phone account is the identity).
+ *
+ * Usage from another plugin:
+ *   #include <chogan>
+ *   public void Chogan_OnAccountBound(int client, int accountId, const char[] displayName) { ... }
+ *   int acct = Chogan_GetAccountId(client);   // 0 => guest / pending / bot
+ *
+ * Optional dependency: `#undef REQUIRE_PLUGIN` before the include and check
+ * LibraryExists("chogan_auth") at runtime.
+ *
+ * Timing: the ticket is usually redeemed between OnClientConnected and
+ * OnClientPutInServer, but the decision is asynchronous (HTTP/SQL round trip, up to
+ * cg_auth_grace + cg_auth_timeout seconds). A stats plugin should therefore key its
+ * rows on Chogan_OnAccountBound / Chogan_OnAuthResolved, not on OnClientPutInServer.
  *
  * SourceMod 1.12, `#pragma newdecls required` compatible.
  */
@@ -15,7 +29,7 @@
 #endif
 #define _chogan_included
 
-#define CHOGAN_AUTH_VERSION "0.1.0"
+#define CHOGAN_AUTH_VERSION "0.2.0"
 
 /** Maximum display-name length (bytes, incl. NUL) exposed by Chogan_GetDisplayName. */
 #define CHOGAN_MAX_DISPLAYNAME 64
@@ -30,7 +44,7 @@ enum ChoganAuthState
 	ChoganAuth_Waiting,    /**< Connected, no ticket presented yet, grace timer running. */
 	ChoganAuth_Pending,    /**< Ticket presented, redemption in flight (HTTP or SQL). */
 	ChoganAuth_Bound,      /**< Redeemed OK — Chogan_GetAccountId() > 0. */
-	ChoganAuth_Guest,      /**< Let in without an account (soft mode fallback, no ticket, late load…). */
+	ChoganAuth_Guest,      /**< Let in without an account (soft-mode fallback, no ticket, late load...). */
 	ChoganAuth_Rejected    /**< Kick has been queued (bad ticket, or hard-mode failure). */
 };
 
@@ -99,15 +113,21 @@ forward void Chogan_OnAccountBound(int client, int accountId, const char[] displ
 /**
  * Fired once per connection when the auth decision is final: Bound, Guest or
  * Rejected. For Rejected the kick is already queued (KickClient), so treat the
- * client as gone.
+ * client as gone. A Guest may later be upgraded to Bound (late agent answer or a
+ * late cg_ticket in soft mode) — then Chogan_OnAccountBound and this forward fire
+ * again with ChoganAuth_Bound.
  *
  * @param client        Client index.
  * @param state         ChoganAuth_Bound, ChoganAuth_Guest or ChoganAuth_Rejected.
  * @param reason        Short machine-readable reason, e.g. "ok", "ok_cache",
- *                      "no_ticket", "api_down", "invalid", "used", "expired",
- *                      "scope", "lateload", "mode_off".
+ *                      "ok_agent_cache", "ok_stub", "no_ticket", "api_down:<why>",
+ *                      "invalid", "used", "expired", "scope".
  */
 forward void Chogan_OnAuthResolved(int client, ChoganAuthState state, const char[] reason);
+
+/* The implementing plugin (chogan_auth.sp) defines CHOGAN_AUTH_IMPLEMENTATION before
+ * including this file so that it does not declare a dependency on itself. */
+#if !defined CHOGAN_AUTH_IMPLEMENTATION
 
 /* Do not edit below this line! */
 public SharedPlugin __pl_chogan_auth =
@@ -131,3 +151,5 @@ public void __pl_chogan_auth_SetNTVOptional()
 	MarkNativeAsOptional("Chogan_GetServerId");
 }
 #endif
+
+#endif /* CHOGAN_AUTH_IMPLEMENTATION */

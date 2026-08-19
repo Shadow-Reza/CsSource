@@ -8,7 +8,7 @@
  * This probe NEVER kicks. It logs (LogMessage + PrintToServer) the value of the
  * `lt` userinfo key at every client lifecycle stage:
  *   OnClientConnect (pre), OnClientConnected, OnClientAuthorized,
- *   OnClientPutInServer, OnClientPostAdminCheck, OnClientSettingsChanged,
+ *   OnClientPutInServer, OnClientPostAdminCheck, OnClientSettingsChanged (with a per-connection counter),
  *   and 1.0 s after OnClientConnected (timer, resolved via client serial).
  * plus GetClientAuthId for Steam2/Steam3/Engine and the IP, and two control keys
  * (`name`, `cl_language`, `rate`) so a missing `lt` can be told apart from
@@ -54,6 +54,7 @@ char   g_sFirstValue[MAXPLAYERS + 1][LT_MAX];
 float  g_fConnectedAt[MAXPLAYERS + 1];
 Handle g_hGrace[MAXPLAYERS + 1];
 Handle g_hOneSec[MAXPLAYERS + 1];
+int    g_iSettingsChanges[MAXPLAYERS + 1];   /* OnClientSettingsChanged counter per connection */
 
 /* ---------------------------------------------------------------------------- */
 
@@ -137,7 +138,17 @@ public void OnClientPostAdminCheck(int client)
 
 public void OnClientSettingsChanged(int client)
 {
-	Probe(client, "OnClientSettingsChanged");
+	/* The first call is expected right after the client's initial net_SetConVar
+	 * batch (docs/source-connect-protocol.md §3) — i.e. the first moment `lt` can
+	 * exist. The counter tells the first batch apart from later name/rate changes. */
+	if (client < 1 || client > MaxClients)
+	{
+		return;
+	}
+	g_iSettingsChanges[client]++;
+	char stage[48];
+	FormatEx(stage, sizeof(stage), "OnClientSettingsChanged#%d", g_iSettingsChanges[client]);
+	Probe(client, stage);
 }
 
 public void OnClientDisconnect(int client)
@@ -324,6 +335,7 @@ void ResetClient(int client)
 	g_sFirstStage[client][0] = '\0';
 	g_sFirstValue[client][0] = '\0';
 	g_fConnectedAt[client] = 0.0;
+	g_iSettingsChanges[client] = 0;
 	delete g_hGrace[client];
 	delete g_hOneSec[client];
 }
