@@ -49,13 +49,11 @@ See docs/source-connect-protocol.md in this repo for the packet layouts.
 import argparse
 import binascii
 import hashlib
-import os
 import random
 import select
 import socket
 import struct
 import sys
-import threading
 import time
 import zlib
 
@@ -1472,7 +1470,6 @@ class NetChannel(object):
                     return msgs
                 msgs.extend(more)
         if r.bits_left() > 0:
-            sub = BitReader(data[r.pos >> 3:]) if (r.pos % 8 == 0) else None
             parsed, err = self.parser.parse(r)
             msgs.extend(parsed)
             if err:
@@ -1632,7 +1629,11 @@ class SrcClient(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if args.bind_port:
             self.sock.bind(('0.0.0.0', args.bind_port))
-        self.addr = (args.host, args.port)
+        try:
+            host_ip = socket.gethostbyname(args.host)
+        except socket.error:
+            host_ip = args.host
+        self.addr = (host_ip, args.port)
         self.client_challenge = (random.randint(0, 0x0FFF) << 16) | random.randint(0, 0xFFFF)
         self.chan = None
         self.signon = SIGNONSTATE_NONE

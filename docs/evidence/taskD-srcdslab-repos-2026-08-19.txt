@@ -1,0 +1,297 @@
+# srcdslab GitHub org - full repository list (293 repos) enumerated 2026-08-19 from https://github.com/orgs/srcdslab/repositories?page=N&type=all
+# Columns: name | last updated | description
+# grep for match|pug|mix|war|ready|knife|scrim|competitive|deathmatch|gungame|respawn|restrict|retake: NO match/PUG/mix repo exists (hits are KnifeMode, KnockbackRestrict, TeamManager(warmup), WeaponCleaner, BotManager, etc.)
+
+ExtremeInjector | 2026-08-18T12:33:04.597Z | 
+HandleDumpParser | 2026-08-18T12:34:38.870Z | Parser for sourcemod handle dumps
+SM-SteamWorks | 2026-08-18T12:18:45.200Z |  Exposing SteamWorks functions to SourcePawn. 
+ZE-Elite | 2026-08-18T12:34:23.699Z | CS:S v91 cheat program
+action-ambuild | 2026-08-18T12:38:51.041Z | Build alliedmodders extensions with ambuild
+ambuild | 2026-08-18T12:36:02.409Z | AlliedModders C++ Build System
+autofastdl | 2026-08-18T13:09:44.109Z | Automates the fastdl process for steam games
+ci-workflows | 2026-08-18T12:21:07.410Z | Shared CI Workflow for organization projects
+cstrike15_src | 2026-08-18T12:40:41.390Z | Leak of CS:GO Source code, provided by yours truly so go rep me
+docker-sourceknight | 2026-08-18T12:10:47.276Z | Docker image for sourceknight
+docker-srcds | 2026-08-18T13:12:36.582Z | Run source engine games in docker
+docker-srcds-pterodactyl | 2026-08-18T12:11:51.814Z | Generic docker containers designed to run source engine games in pterodactyl
+ebans-web | 2026-08-18T12:41:20.984Z | Ebans website for the EntWatch plugin
+helm-charts | 2026-08-18T23:34:40.923Z | Helm Charts
+hl2sdk | 2026-08-18T12:43:05.760Z | Half-Life 2 SDK Mirrors
+hlstatsx | 2026-08-18T12:43:52.024Z | HLstatsX Community Edition - PHP 7 and GeoIP2 supported
+kbans-web | 2026-08-18T12:44:32.195Z | KBans website for the KnockbackRestrict plugin
+logo-resources | 2026-08-18T12:45:05.247Z | Resources used to create the logo
+metamod-source | 2026-08-18T12:56:21.779Z | Metamod:Source - C++ Plugin Environment and Detour Library for the Source Engine
+mm-ext-CS2Fixes | 2026-08-18T12:32:22.432Z | S2ZE modding experiments
+mm-ext-createedictfixer | 2026-08-18T12:00:07.040Z | Ensure no edicts are left unused before going into the higher indexes
+mm-ext-playerlimitremover | 2026-08-18T12:33:02.406Z | Set any number from 1 to 255 for your srcds +maxplayers setting
+mm-ext-stripper | 2026-08-18T12:33:33.676Z | Stripper:Source
+mm-ext-voice | 2023-10-14T11:22:05.568Z | Inject voice data over existing clients
+pterodactyl-eggs | 2026-08-18T12:34:52.338Z | Pterodactyl eggs
+reverse-engineering-resources | 2026-08-18T12:35:49.705Z | Compilation of useful resources to reverse engineer
+setup-sp | 2026-08-18T12:36:21.362Z | This action sets-up, cache and adds sourcemod scripting directory to the path
+sm-ext-PhysHooks | 2026-08-18T12:04:40.430Z | Hooks, forwards and natives for LagCompensation, etc.
+sm-ext-SMJansson | 2026-08-18T12:36:55.234Z | A SourceMod extension, wrapping Jansson, a C library for encoding, decoding and manipulating JSON data.
+sm-ext-SteamWorks | 2023-04-22T11:11:18.297Z | Exposing SteamWorks functions to SourcePawn.
+sm-ext-TransmitManager | 2026-08-18T12:37:26.654Z | Hook SetTransmit
+sm-ext-a2sqcache | 2026-08-18T12:07:09.741Z | Cache steam a2s queries
+sm-ext-accelerator | 2026-08-18T12:38:06.610Z | Community Crash Reporting for SRCDS
+sm-ext-asyncsocket | 2026-08-18T12:08:15.787Z | Async socket extension for SourceMod using libuv.
+sm-ext-cleaner | 2026-08-18T12:08:47.506Z | Console warning suppressor
+sm-ext-common | 2026-08-18T12:38:42.233Z | Extension helper functions
+sm-ext-connect | 2026-08-18T12:09:59.028Z | 
+sm-ext-cssfixes | 2026-08-18T12:10:31.898Z | Patch CS:S bugs
+sm-ext-curl | 2026-08-18T12:39:24.547Z | A cURL extension in Sourcemod
+sm-ext-eventqueue | 2025-09-03T04:52:37.613Z | Sourcemod extension that provides interface to entity events queue
+sm-ext-outputinfo | 2026-08-18T12:11:37.457Z | Read entity outputs
+sm-ext-physhooks-old | 2026-08-18T13:12:43.831Z | 
+sm-ext-ripext | 2026-08-18T12:33:25.122Z | SourceMod REST in Pawn Extension
+sm-ext-sendsnapshotfixer | 2026-08-18T12:33:33.160Z | Fixes the currently messed up sv_parallel_sendsnapshot
+sm-ext-socket | 2026-08-18T12:34:06.619Z | This extension provides networking functionality for SourceMod scripts.
+sm-ext-sourcetvmanager | 2025-02-20T18:44:33.012Z | Interface to interact with the SourceTV server from SourcePawn.
+sm-ext-voice | 2026-08-18T12:34:12.369Z | Inject voice data over existing clients
+sm-plugin-AFKManager | 2026-08-18T12:34:19.917Z | Manage AFK players
+sm-plugin-AdminHelper | 2026-08-18T12:35:54.189Z | Helper functions related to admins
+sm-plugin-AdminLogging | 2026-08-18T12:24:09.451Z | Admin logs saved to Discord
+sm-plugin-AdminRoom | 2026-08-18T11:55:47.553Z | Teleport players to admin rooms and change stages
+sm-plugin-AdvancedAdminList | 2026-08-18T15:30:47.145Z | Advanced sourcemod admin list
+sm-plugin-AdvancedAutoRetry | 2022-08-22T16:04:30.376Z | A toggleable auto retry system for custom particles that only retries players when actually necessary
+sm-plugin-AdvancedTargeting | 2026-08-18T12:44:55.653Z | Target specific groups of players
+sm-plugin-AlwaysWeaponSkins | 2021-08-03T10:04:51.119Z | Allow players to purchase weapons from the opposite team
+sm-plugin-AntiBhopCheat | 2026-08-18T12:26:15.048Z | Player bhop analysis
+sm-plugin-AntiBhopCheat-discord | 2026-08-18T12:47:44.870Z | AntiBhopCheat detections notifications to discord
+sm-plugin-AntiFlood | 2026-08-18T12:25:02.055Z | Manage players flooding the server with commands
+sm-plugin-AntiJumpSpam | 2026-08-18T12:27:56.366Z | Prevents players from spamming jump
+sm-plugin-AutoRecorder | 2026-08-18T12:26:50.306Z | Automates SourceTV recording
+sm-plugin-BSPConVarWhitelist | 2023-03-23T18:39:17.065Z | Changes the file that CS:GO reads the BSP cvar whitelist from
+sm-plugin-BanDisconnected | 2022-08-22T16:33:44.660Z | Ban Disconnected Players
+sm-plugin-Basic | 2026-08-18T12:37:05.655Z | Dynamic methodmap to use it like a class
+sm-plugin-BlockerPasses | 2026-08-18T12:46:46.413Z | Spawn props to block map zones
+sm-plugin-BoostAlert | 2026-08-18T12:47:12.581Z | Player knockback notification system
+sm-plugin-BoostAlert-discord | 2026-08-18T12:46:55.602Z | 
+sm-plugin-BossHP | 2026-08-18T12:47:20.127Z | Advanced management of entities
+sm-plugin-BossHUD | 2026-08-18T12:32:52.622Z | Display health for boss and breakable entities
+sm-plugin-BotManager | 2026-08-18T12:32:49.363Z | Manage bot names, ping and weapon restrictions
+sm-plugin-ByteBuffer | 2026-08-18T12:33:21.426Z | Allows you to create byte-array buffers
+sm-plugin-CIDR | 2026-08-18T12:34:18.656Z | IP range ban
+sm-plugin-CIDR-Discord | 2026-08-18T12:24:39.082Z | 
+sm-plugin-CallAdmin | 2026-08-18T12:26:55.913Z | Send a calladmin message to discord
+sm-plugin-CancelKnife | 2026-08-18T12:24:28.883Z | Reverts the effects of a zombie knife, restoring infected humans and resetting zombie positions
+sm-plugin-CashManager | 2026-08-18T12:26:08.276Z | Manage player money
+sm-plugin-ColorCorrectionController | 2022-08-22T17:13:16.620Z | 
+sm-plugin-CommandBlocker | 2026-08-18T12:35:11.584Z | Block commands
+sm-plugin-CommandHelper | 2026-08-18T12:24:20.326Z | Generate a markdown of all sourcemod commands
+sm-plugin-ConVarEnforcer | 2026-08-18T12:34:59.877Z | Enforce server convars to prevent maps from changing theirs
+sm-plugin-ConVarSuppression | 2026-08-18T12:25:14.574Z | Suppress a convar from displaying changes to players
+sm-plugin-ConnectAnnounce | 2026-08-18T12:27:58.818Z | Connection announcer
+sm-plugin-ConsoleChatManager | 2026-08-18T12:39:38.444Z | Administrate the console chat from the map and multilanguage console chat support
+sm-plugin-CountryTags | 2026-08-18T12:26:19.581Z | Assign clan tags and flags based on player country
+sm-plugin-CustomChatColors | 2026-08-18T12:28:42.176Z | Processes chat to provide colors, custom tags and more
+sm-plugin-Decapitation | 2026-08-18T12:35:53.778Z | Remove head or legs from a player model
+sm-plugin-DevZones | 2026-08-18T12:25:43.493Z | Plugin for create zones and using natives for create third-party plugins easily
+sm-plugin-DisableGrenadeSmoke | 2022-08-21T13:19:48.362Z | Disable smoke created from HE grenades
+sm-plugin-Discord | 2022-11-27T16:25:25.927Z | 
+sm-plugin-DiscordWebhookAPI | 2026-08-18T12:36:27.953Z | An include featuring a well documented, complete wrapper of the Discord Webhook API written in SourcePawn using methodmaps and the RIPExt extension.
+sm-plugin-Dissolve | 2026-08-18T12:36:57.562Z | Dissolve effect on dead bodies
+sm-plugin-DynamicChannels | 2026-08-18T12:01:14.743Z | Automatic game_text channel assignment for server plugins that avoids map channels
+sm-plugin-EnableFullTalk | 2022-08-21T13:23:39.539Z | Set sv_full_alltalk 1 on map start
+sm-plugin-EntWatch | 2026-08-18T12:34:59.826Z | Entity watcher that helps with item management
+sm-plugin-EntWatch-Discord | 2026-08-18T12:03:35.570Z | EntWatch notifications to discord
+sm-plugin-EntWatch-Maker | 2026-08-18T12:46:52.757Z | Can be used to create a basic EntWatch config for a map
+sm-plugin-EntWatch-old | 2023-02-26T19:03:12.727Z | Entity watcher that helps with item management
+sm-plugin-EntityOutputInfo | 2026-08-18T12:39:10.419Z | Read entity outputs and manipulation API
+sm-plugin-Events | 2022-08-12T17:26:27.758Z | Core event system
+sm-plugin-Extend | 2026-08-18T12:25:05.961Z | Extend map time
+sm-plugin-Extended-Discord | 2026-08-18T12:45:02.206Z | Usefull functions for discordWebhookAP
+sm-plugin-ExtraCommands | 2026-08-18T12:45:18.296Z | Extra admin commands
+sm-plugin-FakeClients | 2026-08-18T12:25:37.412Z | Create fake clients
+sm-plugin-FamilyShareManager | 2026-08-18T12:46:21.850Z | Manage players that have their game shared by another steam account
+sm-plugin-FireCustomizer | 2026-08-18T12:37:55.366Z | Precache custom fire particles
+sm-plugin-FixAmmoBox | 2022-08-21T13:25:35.964Z | 
+sm-plugin-FixArms | 2021-01-22T14:52:38.344Z | Fixes arms and gloves
+sm-plugin-FixBumpWeapon | 2022-08-21T13:27:18.193Z | 
+sm-plugin-FixConVarsAnomaly | 2026-08-18T12:38:25.590Z | 
+sm-plugin-FixConnectionExploit | 2026-08-18T12:28:44.866Z | 
+sm-plugin-FixDuck | 2026-08-18T12:38:59.849Z | 
+sm-plugin-FixFuncRotating | 2026-08-18T12:28:10.381Z | 
+sm-plugin-FixGameUI | 2026-08-18T12:25:36.390Z | Fixes game_ui entity bug
+sm-plugin-FixGameVersion | 2026-03-02T18:32:25.775Z | Allows all client game versions
+sm-plugin-FixHintColorMessages | 2022-08-21T13:19:34.015Z | 
+sm-plugin-FixHintDollar | 2022-08-21T13:22:27.669Z | 
+sm-plugin-FixHostTimeScale | 2026-08-18T12:26:02.014Z | Block host_timescale bug from crashing your server
+sm-plugin-FixLadderGravity | 2025-05-22T21:20:24.199Z | 
+sm-plugin-FixLagExploit | 2026-08-18T12:39:43.195Z | 
+sm-plugin-FixMapChange | 2026-08-18T12:40:15.266Z | 
+sm-plugin-FixMemoryLeak | 2026-08-18T12:47:02.376Z | Restart your server at given times to avoid memory leaks from crashing the server
+sm-plugin-FixNapalmLag | 2026-08-18T12:02:58.188Z | 
+sm-plugin-FixNetPublicAdr | 2026-08-18T12:03:11.280Z | Add/Edit convar net_public_adr for servers behind NAT/DHCP
+sm-plugin-FixPanorama | 2022-08-21T13:20:46.944Z | 
+sm-plugin-FixParticleSystem | 2022-08-21T13:21:30.247Z | 
+sm-plugin-FixPlayerEquip | 2026-08-18T12:03:24.379Z | 
+sm-plugin-FixPointViewControl | 2026-08-18T12:03:20.441Z | 
+sm-plugin-FixRNG | 2026-08-18T12:03:38.997Z | A SourceMod plugin for movement game modes
+sm-plugin-FixRPTExploit | 2026-08-18T12:23:38.010Z | 
+sm-plugin-FixSendFileExploit | 2024-07-31T07:42:48.316Z | 
+sm-plugin-FixServerLagExploit | 2026-08-18T12:34:32.634Z | 
+sm-plugin-FixSprayExploit | 2026-08-18T12:25:58.320Z | 
+sm-plugin-FixSpriteRenderMode | 2026-08-18T12:35:07.769Z | 
+sm-plugin-FixSvGravity | 2026-08-18T12:24:53.368Z | 
+sm-plugin-FixTriggerPush | 2022-08-21T13:18:36.301Z | 
+sm-plugin-FixUpdateRadar | 2026-08-18T12:28:24.581Z | 
+sm-plugin-FixVoiceDataExploit | 2026-08-18T12:25:24.765Z | Punishes players who are overflowing voice data to crash the server
+sm-plugin-FixesCSGO | 2023-03-02T14:01:58.928Z | Various fixes for CS:GO
+sm-plugin-FixesCSGO-old | 2022-08-21T13:18:50.793Z | 
+sm-plugin-Flashlight | 2026-08-18T12:24:49.080Z | Replaces +lookatweapon with a toggleable flashlight
+sm-plugin-ForceInputs | 2026-08-18T12:43:34.734Z | Force inputs on entities (ent_fire)
+sm-plugin-ForcedName | 2024-07-05T14:48:19.450Z | Set custom player names
+sm-plugin-FullUpdate | 2026-08-18T12:26:59.737Z | Client side fullupdate
+sm-plugin-FunModes | 2026-08-18T14:36:19.486Z | Funny game modes
+sm-plugin-GlowColors | 2026-08-18T12:27:46.310Z | Change player skin colors
+sm-plugin-GrenadeManager | 2026-08-18T12:36:25.479Z | Manage grenade cost, count on spawn, vip extras
+sm-plugin-GrenadeTweaks | 2026-08-18T12:36:57.260Z | Removes smoke particles & audio ringing from HE grenade explosions
+sm-plugin-HUDLimitIncreaser | 2026-08-18T12:27:48.091Z | Increase HUD limits for money, heath, armor and ammo
+sm-plugin-HideKnife | 2026-08-18T12:33:08.933Z | Makes the knives being held by zombies disappear so they don't look like gangsta muggers
+sm-plugin-HideTeammates | 2026-08-18T12:25:52.554Z | Hide players based on individual distances
+sm-plugin-HitMarker | 2026-08-18T12:24:08.483Z | Display a hitmarker when you hit a target
+sm-plugin-HitboxChanger | 2026-08-18T12:34:24.619Z | Sourcemod extension to modify model hitboxes from memory
+sm-plugin-KnifeAlert | 2024-01-14T14:29:07.093Z | Player knife notification system
+sm-plugin-KnifeMode | 2026-08-18T12:45:45.928Z | Kill players with knife
+sm-plugin-KnockbackRestrict | 2026-08-18T12:35:18.298Z | Restrict players from using knockback weapons
+sm-plugin-KnockbackRestrict-discord | 2026-08-18T12:43:52.558Z | KnockbackRestrict notifications to discord
+sm-plugin-LagCompensation | 2026-08-18T12:39:53.024Z | 
+sm-plugin-LagReducer | 2025-05-07T08:59:56.866Z | Natives to reduce server load of heavy plugins
+sm-plugin-Laser | 2026-08-18T12:24:37.157Z | Throw lasers
+sm-plugin-Leader | 2023-03-22T19:56:57.469Z | 
+sm-plugin-LogHelper | 2026-08-18T12:36:11.784Z | Helper functions related to logs
+sm-plugin-MVPStars | 2026-08-18T12:08:07.691Z | Add a star for players that won the previous round
+sm-plugin-MakoVote | 2025-06-07T14:53:27.476Z | Vote system for ze_ffvii_mako_reactor
+sm-plugin-MapNotification | 2026-08-18T12:45:09.789Z | Send map notifications to discord
+sm-plugin-MovementUnlocker | 2022-08-21T13:22:56.331Z | Remove max speed limitation from players on the ground
+sm-plugin-MultiColors | 2026-08-18T12:36:53.826Z |  Multi Colors (based on Stamm-Colors) is a summary of Colors and More Colors. Depending on the game More Colors will be used as default. Should the game be CS:G…
+sm-plugin-MusicName | 2026-08-18T20:15:51.526Z | Plugin that hooks into map sounds and displays names of music based on a configuration file.
+sm-plugin-NameFilter | 2026-08-18T12:46:00.275Z | Filters bad player names
+sm-plugin-NextmapVoteDisabler | 2022-08-21T13:21:58.744Z | Disable in-game map vote when mp_endmatch_votenextmap is set to 0
+sm-plugin-NoAloneInfectionNoArmor | 2026-08-18T12:38:09.407Z | Control minimum number of players to start zr infection cycle
+sm-plugin-NoBlock | 2026-08-18T12:47:57.392Z | Remove collision from players and grenades
+sm-plugin-NoBlood | 2026-08-18T12:38:49.489Z | Hide blood
+sm-plugin-NoGrenadeRinging | 2026-08-18T12:47:54.088Z | Block ringing noises when a grenade explodes next to you
+sm-plugin-NoShake | 2026-08-18T15:20:51.121Z | Disable env_shake
+sm-plugin-Parachute | 2026-08-18T12:37:07.998Z | Adds a parachute with low gravity when you hold the use key
+sm-plugin-ParticleAutoPrecacher | 2022-08-21T13:19:19.518Z | Precache particle system on a per-map manifest
+sm-plugin-ParticleStringTableExpander | 2026-08-18T12:34:25.898Z | Network particle string table expander
+sm-plugin-PlayerManager | 2026-08-18T12:34:55.233Z | Manage undesired players
+sm-plugin-PlayerVisibility | 2026-08-18T12:40:30.805Z | Fade players away when you get close to them
+sm-plugin-PotcVote | 2026-08-18T12:35:21.659Z | Vote system for ze_potc
+sm-plugin-Prop | 2026-08-18T12:35:49.150Z | Buy props, show their health and more
+sm-plugin-PropWatch | 2026-08-18T12:47:27.551Z | Manage players shooting teammate props
+sm-plugin-ProxyKiller | 2026-08-18T12:45:27.621Z | Expose natives to detect players using proxies and VPNs
+sm-plugin-ProxyKiller-Discord | 2026-08-18T12:27:37.343Z | Sends VPN flagged players info to discord
+sm-plugin-QuakeSounds | 2026-08-18T12:08:16.317Z | Play sounds based on game events
+sm-plugin-QuickSwitch | 2026-08-18T12:47:05.086Z | Switch to your knife without delay
+sm-plugin-RadioMute | 2023-11-19T14:08:14.387Z | Mute player radio
+sm-plugin-RadioSpamBlock | 2026-08-18T12:27:18.732Z | Block players spamming radio
+sm-plugin-RelayHelper | 2026-08-18T12:37:28.045Z | Relay helper mainly used for discord
+sm-plugin-RemoveCashMessages | 2022-08-21T13:22:13.443Z | Remove all cash and points messages from chat
+sm-plugin-RenderDistance | 2026-08-18T12:47:39.198Z | Sets entities render distance for each player
+sm-plugin-ReservedSlot | 2026-08-18T12:47:26.633Z | Allow specific group of players to have reserved slots
+sm-plugin-ResetScore | 2026-08-18T12:26:43.020Z | Reset player score
+sm-plugin-RoundTime | 2026-08-18T12:27:59.380Z | Remove mp_roundtime limits
+sm-plugin-SMAC | 2026-08-18T12:48:04.648Z | Sourcemod Anti-Cheat
+sm-plugin-SMJSONAPI | 2026-08-18T12:47:06.677Z | Sourcemod JSON API
+sm-plugin-SMTextReplace | 2026-08-18T12:28:28.065Z | Customise default sourcemod tag
+sm-plugin-SaveLevel | 2026-08-18T12:26:35.071Z | Saves players level on maps when they disconnect and restore them on connect
+sm-plugin-SelectiveBhop | 2026-08-18T12:25:57.434Z | Disable bunnyhop of specific players
+sm-plugin-SelfMute | 2026-08-18T12:24:11.535Z | Selfmute other players
+sm-plugin-SelfMuteRadio | 2026-08-18T12:27:05.376Z | Selfmute player radio
+sm-plugin-ServerAdvertisements | 2026-08-18T12:24:29.338Z | Adverstise messages to players.
+sm-plugin-ServerCommandFilter | 2026-08-18T12:35:50.689Z | Filters point_servercommand->Command() using user-defined rules to restrict maps.
+sm-plugin-Shop-Core | 2026-08-18T12:40:27.033Z | An advanced in game market
+sm-plugin-Shop_Aura | 2026-08-18T12:28:46.206Z | 
+sm-plugin-Shop_Chat | 2026-08-18T12:27:33.221Z | 
+sm-plugin-Shop_CreditsDistributor | 2026-08-18T12:25:04.470Z | 
+sm-plugin-Shop_GrenadeTrails | 2026-08-18T12:26:16.547Z | 
+sm-plugin-Shop_MathCredits | 2026-08-18T12:25:59.349Z | 
+sm-plugin-Shop_Nades | 2026-08-18T12:26:04.236Z | 
+sm-plugin-Shop_OnlineCredits | 2026-08-18T12:26:36.202Z | 
+sm-plugin-Shop_Paintball | 2026-08-18T12:27:34.784Z | 
+sm-plugin-Shop_Top10 | 2026-08-18T12:28:11.560Z | 
+sm-plugin-Shop_Tracers | 2026-08-18T12:27:15.196Z | 
+sm-plugin-Shop_Trails | 2026-08-18T12:26:47.544Z | 
+sm-plugin-Shop_WeaponColors | 2026-08-18T12:28:11.826Z | 
+sm-plugin-Shop_ZRSkins | 2026-08-18T12:40:53.571Z | 
+sm-plugin-ShowDamage | 2026-08-18T12:34:51.028Z | Show weapon damage like in fortnite
+sm-plugin-SlowFire | 2022-08-21T13:23:25.153Z | Slow players when they are hit by napalm nades
+sm-plugin-SourceChatRelay | 2023-05-14T14:44:33.566Z | 
+sm-plugin-SpeakerIcon | 2022-08-21T13:21:15.976Z | Add a speaker icon above players using voice chat
+sm-plugin-Spectate | 2026-08-18T12:43:32.781Z | Spectate players
+sm-plugin-SprayManager | 2026-08-18T12:25:43.996Z | Manage player sprays
+sm-plugin-Status | 2026-08-18T12:43:14.696Z | Advanced status command
+sm-plugin-StopSound | 2026-08-18T12:25:25.356Z | Stop player and map sounds
+sm-plugin-SuppressViewpunch | 2026-08-18T12:36:24.408Z | A plugin that suppresses viewpunch when a player slams into the ground (CS:S only)
+sm-plugin-TeamManager | 2026-08-18T12:45:00.615Z | Warmup round and manage player teams
+sm-plugin-Teleport | 2026-08-18T12:25:40.431Z | Teleport players
+sm-plugin-TeleportCrashPrevention | 2022-08-21T13:19:05.336Z | 
+sm-plugin-TeleportTriggerStopper | 2022-08-21T13:23:54.078Z | Prevent noclip players from teleports and triggers activation
+sm-plugin-ThirdPerson | 2026-08-18T12:27:54.462Z | Allow players to toggle thirdperson
+sm-plugin-ToggleEffects | 2026-03-02T22:54:16.506Z | Global Special Effects Options
+sm-plugin-TogsJumpStats | 2026-08-18T12:25:50.308Z | Player bhop analysis
+sm-plugin-TopDefenders | 2026-08-18T12:47:19.305Z | Reward and display top defenders
+sm-plugin-TopInfectors | 2026-08-18T12:26:35.394Z | Reward and display top infectors
+sm-plugin-TriggerWatcher | 2026-08-18T12:27:35.503Z | Button and trigger notification system
+sm-plugin-UtilsHelper | 2026-08-18T12:37:57.555Z | A general utility helper include
+sm-plugin-VIP-Core | 2026-08-18T12:27:37.299Z | Core plugin to manage VIP players
+sm-plugin-VIP_CustomFeatures | 2026-08-18T12:28:33.906Z | 
+sm-plugin-VIP_FreeVIPGiveaway | 2026-08-18T14:02:04.282Z | 
+sm-plugin-VIP_JumpEffects | 2026-08-18T12:26:20.859Z | 
+sm-plugin-VIP_Neon | 2026-08-18T12:26:04.485Z | 
+sm-plugin-VIP_SourcemodFlags | 2026-08-18T12:01:46.389Z | Give sourcemod flags to VIP players
+sm-plugin-VIP_Tag | 2026-08-18T12:19:00.666Z | 
+sm-plugin-VIP_Test | 2026-08-18T12:35:32.991Z | 
+sm-plugin-VIP_Tracers | 2026-08-18T12:27:22.636Z | Create weapon tracers
+sm-plugin-VIP_VIPsOnline | 2026-08-18T12:24:22.674Z | 
+sm-plugin-VScript | 2025-09-03T04:53:19.830Z | VScript function helper include
+sm-plugin-VScript-Geometric | 2025-03-16T06:08:57.053Z | 
+sm-plugin-VScript-MakoReactor | 2026-08-18T12:39:16.822Z | 
+sm-plugin-VScript-MovingNPC | 2025-09-03T04:53:55.855Z | 
+sm-plugin-VScript-ze_grey_world | 2025-05-31T09:21:38.111Z | ze_grey_world vscripts
+sm-plugin-VScript_ze_aesthetic | 2025-03-16T06:08:12.582Z | ze_aesthetic VScript
+sm-plugin-VScript_ze_dreamin | 2025-06-03T08:58:58.571Z | ze_dreamin VScript
+sm-plugin-VScript_ze_eternal_grove | 2025-09-03T04:51:44.686Z | 
+sm-plugin-VScript_ze_jjba | 2025-03-16T06:06:31.037Z | ze_jjba VScript
+sm-plugin-VScript_ze_kitchen | 2025-03-16T06:07:27.803Z | ze_kitchen VScript
+sm-plugin-VScript_ze_squidzer | 2025-06-24T17:09:22.592Z | Movement detection for the redlight greenlight game
+sm-plugin-VoiceHUD | 2022-08-21T13:26:19.876Z | HUD to track player voice
+sm-plugin-WeaponCleaner | 2026-08-18T12:44:50.942Z | Clean unneeded weapons
+sm-plugin-ZLeader | 2026-08-18T12:26:25.805Z | Allows for a human to be a leader, and give them special functions with it
+sm-plugin-ZR_Ammo | 2026-08-18T12:40:07.156Z | Infinite ammo
+sm-plugin-ZR_GrenadeEffects | 2026-08-18T12:42:06.131Z | 
+sm-plugin-ZR_LaserMines | 2026-08-18T12:26:54.157Z | Create laser mines
+sm-plugin-ZR_MapHooks | 2025-05-31T09:31:29.747Z | 
+sm-plugin-ZR_PersonalSkins | 2026-08-18T12:46:30.457Z | 
+sm-plugin-ZR_RepeatKillDetector | 2026-08-18T12:25:23.755Z | 
+sm-plugin-ZR_Tools | 2026-08-18T12:36:41.476Z | 
+sm-plugin-autosilencer | 2026-08-18T12:45:20.464Z | If you like m4a1 or usp with silencer, you can set silencer by default in m4a1 and usp and you will not lose a few seconds putting the silencer always, also, yo…
+sm-plugin-autosilencer-old | 2026-08-18T12:37:23.855Z | 
+sm-plugin-entwatch-4 | 2026-08-18T12:37:35.683Z | A Sourcemod plugin that displays information about 'items' on maps. 
+sm-plugin-fixfirebullets | 2026-08-18T12:27:53.871Z | Here is a fire bullet fix for source engine game servers, explanation: https://github.com/ValveSoftware/source-sdk-2013/pull/442
+sm-plugin-lilac | 2026-08-18T12:46:34.803Z | Anti-Cheat for Source Games
+sm-plugin-lilac-discord | 2026-08-18T12:04:25.564Z | Lilac detections notifications to discord
+sm-plugin-mapchooser-extended | 2026-08-18T12:24:21.681Z | Extended version of the SourceMod MapChooser
+sm-plugin-mapchooser_extended_old | 2024-03-02T13:55:29.745Z | Advanced automated map voting system
+sm-plugin-nativevotes | 2026-08-18T12:35:11.027Z | NativeVotes SourceMod plugin
+sm-plugin-sbpp-discord | 2026-08-18T12:24:24.323Z | Sourcebans notifications to discord
+sm-plugin-smlib | 2026-08-18T12:35:48.324Z | Function Stock Library for Sourcemod with over 350 new functions
+sm-plugin-stripper | 2026-08-18T12:46:18.941Z | Sourcepawn implementation of Stripper:Source
+sm-plugin-stripper-discord | 2026-08-18T12:47:38.988Z | 
+sm-plugin-toggle_weapon_sounds | 2026-08-18T12:37:07.673Z | Stop weapon sounds
+sm-plugin-zombiereloaded | 2026-08-18T12:08:25.446Z | Zombie:Reloaded for SourceMod
+sm-plugins-FixMapFiles | 2026-08-18T12:26:45.090Z | Download fixed files for multiple maps
+smtranslate | 2026-08-18T12:09:13.195Z | Sourcemod translation linter and formatter
+source-chat-relay | 2026-08-18T12:48:14.086Z | Communicate between Discord & In-Game, monitor server without being in-game, control the flow of messages and user base engagement!
+source-engine-2018-hl2_src | 2026-08-18T12:38:47.700Z | Source Engine 1
+sourcebans-pp | 2026-08-18T12:39:26.986Z | Admin, ban, and comms management system for the Source engine
+sourcemod | 2026-08-18T12:56:49.188Z | SourceMod - Source Engine Scripting and Administration
+sourcepawn | 2026-08-18T12:40:44.671Z | A small, statically typed scripting language.
+srcdsknight | 2026-08-18T13:12:21.026Z | A simple dependency manager for srcds servers
+throttle | 2026-08-18T12:41:49.044Z | Lightweight google-breakpad back-end written in PHP and backed by MySQL
+throttle-dockerized | 2026-08-18T12:42:22.608Z | Run Throttle within Docker locally and make it visible globally within Ngrok
+torchlight | 2026-08-18T12:14:48.985Z | Bot for source engine games with a lot of commands
