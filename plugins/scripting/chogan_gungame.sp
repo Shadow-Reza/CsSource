@@ -409,7 +409,7 @@ public Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadca
 		{
 			hp = 100;
 		}
-		SetEntProp(attacker, Prop_Send, "m_iHealth", hp);
+		SetEntityHealth(attacker, hp);   /* datamap-based; safe on v92 (no vtable index) */
 	}
 
 	EquipLevel(attacker);
