@@ -1,0 +1,39 @@
+### switch cg-agent to mode=local (MariaDB-backed single-use tickets)
+agent mode: local db ok: True
+### issue a ticket for account 1 scoped to pub1 (ttl 90s) and one scoped to pub2, one with ttl 1s
+tickets: T1=R4-sloPy... (pub1) T2=YezUZ7lG... (pub2) T3=DY8hKw8E... (pub1, ttl 1s)
+### a: valid ticket T1 -> expect BOUND account 1
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=5.0 .. disconnect_reason=none
+### b: SAME ticket T1 again from the same IP -> 'used' at the agent, but plugin's reconnect cache (ip+ticket) -> BOUND (innocent reconnect)
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=5.0 .. disconnect_reason=none
+### c: flush the plugin cache, then T1 again -> agent says used, no cache -> KICK (bad ticket is not an API failure)
+[chogan_auth] reconnect cache flushed (2 entries)
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=5.0 .. disconnect_reason=none
+### d: ticket T2 scoped to pub2 presented on pub1 -> scope -> KICK
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=0.0 .. disconnect_reason=Chogan:_login_required_-_please_start_the_game_from_the_Chogan_launcher_(scope)
+### e: expired ticket T3 -> expired -> KICK
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=0.0 .. disconnect_reason=Chogan:_login_required_-_please_start_the_game_from_the_Chogan_launcher_(expired)
+### f: garbage ticket -> invalid -> KICK
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=0.0 .. disconnect_reason=Chogan:_login_required_-_please_start_the_game_from_the_Chogan_launcher_(invalid)
+### back to stub mode
+agent mode: stub
+### plugin log:
+54: [chogan_auth.smx] [chogan_auth] client 11 (hardkick2): agent unavailable (transport:Failed to connect to 127.0.0.1 port 8480: Unknown error 111) after 0.01s - mode=2
+54: [chogan_auth.smx] [chogan_auth] client 11 (hardkick2): KICK (api_down:transport:Failed to connect to 127.0.0)
+54: [chogan_auth.smx] [chogan_auth] client 7 (reconnector): agent unavailable (breaker_open) after 0.00s - mode=2
+54: [chogan_auth.smx] [chogan_auth] client 7 (reconnector): BOUND account_id=1060 display="Test Player" source=cache (ok_cache) in 0.00s
+38: [chogan_auth.smx] [chogan_auth] circuit breaker CLOSED (agent answered)
+38: [chogan_auth.smx] [chogan_auth] client 11 (acct1): BOUND account_id=1 display="Player 1" source=setinfo (ok_local) in 0.01s
+43: [chogan_auth.smx] [chogan_auth] client 8 (acct1): BOUND account_id=1 display="Player 1" source=setinfo (ok_agent_cache) in 0.01s
+48: [chogan_auth.smx] [chogan_auth] client 11 (acct1again): BOUND account_id=1 display="Player 1" source=setinfo (ok_agent_cache) in 0.01s
+53: [chogan_auth.smx] [chogan_auth] client 8 (wrongserver): ticket rejected (scope) [YezUZ7lGXy0...]
+53: [chogan_auth.smx] [chogan_auth] client 8 (wrongserver): KICK (scope)
+53: [chogan_auth.smx] [chogan_auth] client 7 (expired): ticket rejected (expired) [DY8hKw8EeRJ...]
+53: [chogan_auth.smx] [chogan_auth] client 7 (expired): KICK (expired)
+53: [chogan_auth.smx] [chogan_auth] client 7 (garbage): ticket rejected (invalid) [not-a-ticke...]
+53: [chogan_auth.smx] [chogan_auth] client 7 (garbage): KICK (invalid)
+### tickets table:
+h	account_id	server_id	exp	used_at
+1dbbff9d6c	2	pub2	2026-08-19 09:45:05	NULL
+7744bbd12f	1	pub1	2026-08-19 09:43:36	NULL
+d8d41964a8	1	pub1	2026-08-19 09:45:05	2026-08-19 09:43:38
