@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# css-launch <instance> — exec srcds_run for one instance, parameters from /opt/css/etc/instances/<i>.env
+# All seven instances bind the single public IP (MISSION §1); clientport/steamport/tv_port unique per instance.
+set -euo pipefail
+n="${1:?instance name}"
+ENVF="/opt/css/etc/instances/$n.env"; [ -r "$ENVF" ] || { echo "missing $ENVF" >&2; exit 1; }
+# shellcheck disable=SC1090
+set -a; . "$ENVF"; set +a
+ROOT="/opt/css/instances/$n/root"
+cd "$ROOT" || exit 1
+export HOME="/opt/css/instances/$n/home"
+: "${CSS_IP:=212.80.8.87}" "${CSS_TICKRATE:=66}" "${CSS_MAP:=de_dust2}" "${CSS_MAXPLAYERS:=24}" "${CSS_EXTRA_ARGS:=}"
+: "${CSS_PORT:?}" "${CSS_CLIENTPORT:?}" "${CSS_STEAMPORT:?}" "${CSS_TVPORT:?}"
+echo "css-launch: instance=$n ip=$CSS_IP port=$CSS_PORT clientport=$CSS_CLIENTPORT steamport=$CSS_STEAMPORT tvport=$CSS_TVPORT tick=$CSS_TICKRATE max=$CSS_MAXPLAYERS map=$CSS_MAP"
+# -norestart: systemd owns restarts. -strictportbind: fail loudly on port collision. -insecure: no VAC (non-Steam). -noupdate: never self-update.
+exec ./srcds_run -game cstrike -console \
+  -ip "$CSS_IP" -port "$CSS_PORT" +clientport "$CSS_CLIENTPORT" -steamport "$CSS_STEAMPORT" +tv_port "$CSS_TVPORT" \
+  -tickrate "$CSS_TICKRATE" -maxplayers "$CSS_MAXPLAYERS" +map "$CSS_MAP" \
+  -norestart -strictportbind -nobreakpad -insecure -noupdate \
+  +hostname_instance "$n" $CSS_EXTRA_ARGS

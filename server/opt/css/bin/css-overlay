@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# css-overlay mount|umount|status <instance> — per-instance overlayfs over the shared read-only base.
+# lower=/opt/css/base upper=/opt/css/instances/<i>/upper work=.../work merged=.../root
+set -euo pipefail
+cmd="${1:-}"; n="${2:-}"; [ -n "$cmd" ] && [ -n "$n" ] || { echo "usage: css-overlay mount|umount|status <instance>" >&2; exit 2; }
+BASE=/opt/css/base; I="/opt/css/instances/$n"
+case "$cmd" in
+  mount)
+    [ -d "$BASE/cstrike" ] || { echo "base not installed at $BASE" >&2; exit 1; }
+    mkdir -p "$I/upper" "$I/work" "$I/root" "$I/home"
+    if mountpoint -q "$I/root"; then echo "already mounted: $I/root"; exit 0; fi
+    mount -t overlay "overlay-css-$n" -o "lowerdir=$BASE,upperdir=$I/upper,workdir=$I/work,index=off,metacopy=off" "$I/root"
+    # the merged root's inode is the upper dir's inode: give it the same owner/mode as the base top dir
+    chown cssbase:css "$I/root"; chmod 2775 "$I/root"
+    echo "mounted overlay for $n at $I/root";;
+  umount)
+    if mountpoint -q "$I/root"; then umount "$I/root" && echo "unmounted $I/root"; else echo "not mounted: $I/root"; fi;;
+  status)
+    mountpoint "$I/root" 2>&1; du -sh "$I/upper" 2>/dev/null;;
+  *) echo "unknown command $cmd" >&2; exit 2;;
+esac
