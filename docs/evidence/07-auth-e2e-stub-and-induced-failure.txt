@@ -1,0 +1,71 @@
+### A: soft mode, NO ticket -> expect guest after grace
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=14.0 last_signon_state=3 serverinfo_seen=1 spawncount=3 u
+### B: bound client stays while agent is killed; new client during outage -> guest (soft)
+agent stopped at 09:40:11
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=12.0 last_signon_state=3 serverinfo_seen=1 spawncount=3 u
+### C: hard mode (cg_auth_mode 2) while agent still down -> expect kick
+[   0.012] srcclient: target 212.80.8.87:27017 name='hardkick' hold=12.0s authproto=auto product_version='6630498' progress=2
+[   0.041] queued reliable: net_SetConVar(14 convars: name=hardkick, rate=80000, cl_updaterate=66, cl_cmdrate=66, cl_interp=0.03, cl_interp_ratio=2, cl_lagcompensation=1, cl_predict=1, cl_predictweapo
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=12.0 last_signon_state=3 serverinfo_seen=1 spawncount=3 userinfo_acked=1 dropped=0 disconnect_reason=none authproto=3 challenge=0x90f41d9
+agent started at 09:40:37
+### boundA result:
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=45.0 last_signon_state=3 serverinfo_seen=1 spawncount=3 u
+### D: after agent restart, a new client binds again
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=8.0 last_signon_state=3 serverinfo_se
+### server still alive:
+active
+active
+hostname: Chogan | Public #1 | Classic
+version : 6630498/24 6630498 insecure
+udp/ip  : 212.80.8.87:27017
+map     : de_dust2 at: 0 x, 0 y, 0 z
+tags    : bots,chogan,public
+players : 0 humans, 10 bots (32 max)
+edicts  : 259 used of 2048 max
+# userid name                uniqueid            connected ping loss state  adr
+### plugin log:
+54: [chogan_auth.smx] [chogan_auth] client 11 (phoneuser1): ticket via setinfo at OnClientConnected (13 bytes, 0.000s after connect) -> redeem [transport=ripext]
+54: [chogan_auth.smx] [chogan_auth] client 11 (phoneuser1): BOUND account_id=1154 display="Test Player" source=setinfo (ok_stub) in 0.01s
+59: [chogan_auth.smx] [chogan_auth] client 11 (guestuser): no ticket within 8.0s (neither setinfo lt nor cg_ticket) - mode=1
+59: [chogan_auth.smx] [chogan_auth] client 11 (guestuser): GUEST (no_ticket)
+05: [chogan_auth.smx] [chogan_auth] client 8 (boundA): ticket via setinfo at OnClientConnected (13 bytes, 0.000s after connect) -> redeem [transport=ripext]
+05: [chogan_auth.smx] [chogan_auth] client 8 (boundA): BOUND account_id=1623 display="Test Player" source=setinfo (ok_stub) in 0.01s
+13: [chogan_auth.smx] [chogan_auth] client 12 (duringOutage): ticket via setinfo at OnClientConnected (13 bytes, 0.000s after connect) -> redeem [transport=ripext]
+13: [chogan_auth.smx] [chogan_auth] client 12 (duringOutage): agent unavailable (transport:Failed to connect to 127.0.0.1 port 8480: Unknown error 111) after 0.01s - mode=1
+13: [chogan_auth.smx] [chogan_auth] client 12 (duringOutage): BOUND account_id=1623 display="Test Player" source=cache (ok_cache) in 0.01s
+25: [chogan_auth.smx] [chogan_auth] client 12 (hardkick): ticket via setinfo at OnClientConnected (11 bytes, 0.000s after connect) -> redeem [transport=ripext]
+25: [chogan_auth.smx] [chogan_auth] client 12 (hardkick): agent unavailable (transport:Failed to connect to 127.0.0.1 port 8480: Unknown error 111) after 0.01s - mode=2
+25: [chogan_auth.smx] [chogan_auth] client 12 (hardkick): BOUND account_id=1623 display="Test Player" source=cache (ok_cache) in 0.01s
+50: [chogan_auth.smx] [chogan_auth] client 7 (afterRestart): ticket via setinfo at OnClientConnected (12 bytes, 0.000s after connect) -> redeem [transport=ripext]
+50: [chogan_auth.smx] [chogan_auth] client 7 (afterRestart): BOUND account_id=1369 display="Test Player" source=setinfo (ok_stub) in 0.01s
+### 1: bind 'reconnector' with ticket T-RECON (agent up)
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=6.0 .. disconnect_reason=none
+agent stopped at 09:42:42
+### 2: SOFT mode, agent down, SAME ticket T-RECON from same IP -> expect BOUND from cache (reconnect case)
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=6.0 .. disconnect_reason=none
+### 3: SOFT mode, agent down, NEW ticket T-NEW1 -> expect GUEST (api_down, no cache)
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=6.0 .. disconnect_reason=none
+### 4: HARD mode, agent down, NEW ticket T-NEW2 -> expect KICK
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=0.0 .. disconnect_reason=Chogan:_login_required_-_please_start_the_game_from_the_Chogan_launcher_(api_down:transport:Failed_to_connect_to_127.0.0)
+### 5: HARD mode, agent down, SAME ticket T-RECON -> expect BOUND from cache
+SRCCLIENT_RESULT connected=1 rejected_reason=none held_seconds=6.0 .. disconnect_reason=none
+agent started at 09:43:00
+active
+active
+### plugin log:
+50: [chogan_auth.smx] [chogan_auth] client 7 (afterRestart): BOUND account_id=1369 display="Test Player" source=setinfo (ok_stub) in 0.01s
+35: [chogan_auth.smx] [chogan_auth] client 11 (reconnector): ticket via setinfo at OnClientConnected (7 bytes, 0.000s after connect) -> redeem [transport=ripext]
+36: [chogan_auth.smx] [chogan_auth] client 11 (reconnector): BOUND account_id=1060 display="Test Player" source=setinfo (ok_stub) in 0.01s
+42: [chogan_auth.smx] [chogan_auth] client 9 (reconnector): ticket via setinfo at OnClientConnected (7 bytes, 0.000s after connect) -> redeem [transport=ripext]
+42: [chogan_auth.smx] [chogan_auth] client 9 (reconnector): agent unavailable (transport:Failed to connect to 127.0.0.1 port 8480: Unknown error 111) after 0.01s - mode=1
+42: [chogan_auth.smx] [chogan_auth] client 9 (reconnector): BOUND account_id=1060 display="Test Player" source=cache (ok_cache) in 0.01s
+48: [chogan_auth.smx] [chogan_auth] client 7 (newbie): ticket via setinfo at OnClientConnected (6 bytes, 0.000s after connect) -> redeem [transport=ripext]
+48: [chogan_auth.smx] [chogan_auth] client 7 (newbie): agent unavailable (transport:Failed to connect to 127.0.0.1 port 8480: Unknown error 111) after 0.01s - mode=1
+48: [chogan_auth.smx] [chogan_auth] client 7 (newbie): GUEST (api_down:transport:Failed to connect to 127.0.0)
+54: [chogan_auth.smx] [chogan_auth] client 11 (hardkick2): ticket via setinfo at OnClientConnected (6 bytes, 0.000s after connect) -> redeem [transport=ripext]
+54: [chogan_auth.smx] [chogan_auth] circuit breaker OPEN for 20s after 3 consecutive failures - agent will not be called, fallback path applies immediately
+54: [chogan_auth.smx] [chogan_auth] client 11 (hardkick2): agent unavailable (transport:Failed to connect to 127.0.0.1 port 8480: Unknown error 111) after 0.01s - mode=2
+54: [chogan_auth.smx] [chogan_auth] client 11 (hardkick2): KICK (api_down:transport:Failed to connect to 127.0.0)
+54: [chogan_auth.smx] [chogan_auth] client 7 (reconnector): ticket via setinfo at OnClientConnected (7 bytes, 0.000s after connect) -> redeem [transport=ripext]
+54: [chogan_auth.smx] [chogan_auth] client 7 (reconnector): agent unavailable (breaker_open) after 0.00s - mode=2
+54: [chogan_auth.smx] [chogan_auth] client 7 (reconnector): BOUND account_id=1060 display="Test Player" source=cache (ok_cache) in 0.00s

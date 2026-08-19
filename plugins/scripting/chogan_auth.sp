@@ -28,7 +28,7 @@
  * No ticket within cg_auth_grace: soft ⇒ guest, hard ⇒ kick. No answer within
  * cg_auth_timeout ⇒ treated as api_down. Fail open, not closed (MISSION §6.3).
  *
- * Reconnect: authid+ip → account cache (cg_auth_cache_ttl, default 600 s) on top of
+ * Reconnect: ip+ticket → account cache (cg_auth_cache_ttl, default 600 s) on top of
  * the agent's own cache, so a manual reconnect that re-presents an already-redeemed
  * ticket is not kicked. Circuit breaker: after cg_auth_breaker_fails consecutive
  * transport failures the agent is not called for cg_auth_breaker_open seconds and
@@ -106,6 +106,7 @@ char   g_sDisplayName[MAXPLAYERS + 1][CHOGAN_MAX_DISPLAYNAME];
 char   g_sSource[MAXPLAYERS + 1][16];                      /* setinfo | cmd | cache | lateload | none | - */
 char   g_sReason[MAXPLAYERS + 1][48];
 char   g_sTicketHint[MAXPLAYERS + 1][12];                  /* first chars of the ticket, logs only */
+char   g_sTicketFp[MAXPLAYERS + 1][12];                    /* FNV-1a fingerprint of the full ticket: reconnect-cache key */
 bool   g_bTicketTried[MAXPLAYERS + 1];                     /* a ticket was sent for redemption on this connection */
 bool   g_bLateLoadClient[MAXPLAYERS + 1];                  /* already connected when the plugin loaded: never kick */
 bool   g_bLateVerdict[MAXPLAYERS + 1];                     /* watchdog resolved; a late callback may still apply */
@@ -709,6 +710,7 @@ void StartRedeem(int client, const char[] ticket, const char[] source, const cha
 	g_State[client] = ChoganAuth_Pending;
 	strcopy(g_sSource[client], sizeof(g_sSource[]), source);
 	strcopy(g_sTicketHint[client], sizeof(g_sTicketHint[]), ticket); /* truncates to 11 chars */
+	TicketFingerprint(ticket, g_sTicketFp[client], sizeof(g_sTicketFp[]));
 	g_fRedeemStart[client] = GetEngineTime();
 
 	delete g_hGraceTimer[client];
@@ -1535,17 +1537,36 @@ void JsonEscape(const char[] input, char[] dest, int maxlen)
 /* ============================================================================ */
 /* reconnect cache                                                               */
 
+void TicketFingerprint(const char[] ticket, char[] out, int maxlen)
+{
+	/* FNV-1a 32-bit over the full ticket; only used as a cache key, never sent anywhere */
+	int h = 0x811C9DC5;
+	for (int i = 0; ticket[i] != ' '; i++)
+	{
+		h ^= (ticket[i] & 0xFF);
+		h *= 0x01000193;
+	}
+	FormatEx(out, maxlen, "%08X", h);
+}
+
 void CacheKey(int client, char[] key, int maxlen)
 {
-	char ip[48], authid[64], name[MAX_NAME_LENGTH];
-	GetIdentity(client, ip, sizeof(ip), authid, sizeof(authid), name, sizeof(name));
-	FormatEx(key, maxlen, "%s|%s", ip, authid);
+	/* "<ip>|<ticket fingerprint>": a manual reconnect re-presents the same (already used) ticket from the same IP;
+	 * a different player behind the same NAT has a different ticket, so they can never inherit someone else's
+	 * account during an agent outage. authid is deliberately NOT part of the key (forgeable, and often still
+	 * STEAM_ID_PENDING at lookup time). */
+	char ip[48];
+	if (!GetClientIP(client, ip, sizeof(ip)))
+	{
+		ip[0] = ' ';
+	}
+	FormatEx(key, maxlen, "%s|%s", ip, g_sTicketFp[client]);
 }
 
 void CacheStore(int client, int accountId, const char[] displayName)
 {
 	int ttl = g_cvCacheTtl.IntValue;
-	if (ttl <= 0 || accountId <= 0)
+	if (ttl <= 0 || accountId <= 0 || g_sTicketFp[client][0] == ' ')
 	{
 		return;
 	}
@@ -1557,27 +1578,13 @@ void CacheStore(int client, int accountId, const char[] displayName)
 	val[1] = GetTime() + ttl;
 	g_hCacheAcct.SetArray(key, val, sizeof(val));
 	g_hCacheName.SetString(key, displayName);
-
-	/* also store under the ip-only key: at reconnect time the auth id may not be
-	 * known yet, so the lookup key would be "<ip>|" */
-	char ip[48];
-	if (GetClientIP(client, ip, sizeof(ip)))
-	{
-		char ipOnly[128];
-		FormatEx(ipOnly, sizeof(ipOnly), "%s|", ip);
-		if (!StrEqual(ipOnly, key))
-		{
-			g_hCacheAcct.SetArray(ipOnly, val, sizeof(val));
-			g_hCacheName.SetString(ipOnly, displayName);
-		}
-	}
 }
 
 bool CacheLookup(int client, int &accountId, char[] displayName, int maxlen)
 {
 	accountId = 0;
 	displayName[0] = '\0';
-	if (g_cvCacheTtl.IntValue <= 0)
+	if (g_cvCacheTtl.IntValue <= 0 || g_sTicketFp[client][0] == ' ')
 	{
 		return false;
 	}
