@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# rsh — run a command (or stdin script) on the Chogan CS:S VM as the cssource user.
+#   rsh 'uptime'            # single command
+#   rsh < script.sh         # stdin script
+# Env: CSS_HOST (default 212.80.8.87), CSS_USER (default cssource), CSS_KEY (~/.ssh/chogan_css)
+set -euo pipefail
+HOST="${CSS_HOST:-212.80.8.87}"; USER_="${CSS_USER:-cssource}"; KEY="${CSS_KEY:-$HOME/.ssh/chogan_css}"
+SSH=(ssh -i "$KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -o ConnectTimeout=20 "$USER_@$HOST")
+if [ $# -gt 0 ]; then exec "${SSH[@]}" "$@"; else exec "${SSH[@]}" "bash -s"; fi

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# rput — copy a local file to the VM and install it as root.
+#   rput <local> <remote-path> [mode] [owner:group]
+# Uses scp to a per-user staging dir, then `sudo install`.
+set -euo pipefail
+LOCAL="$1"; REMOTE="$2"; MODE="${3:-0644}"; OWNER="${4:-root:root}"
+HOST="${CSS_HOST:-212.80.8.87}"; USER_="${CSS_USER:-cssource}"; KEY="${CSS_KEY:-$HOME/.ssh/chogan_css}"
+PWF="${CSS_SUDOPW_FILE:-$HOME/.ssh/chogan_css.sudopw}"
+STAGE="/home/$USER_/.stage"
+BN="$(basename "$LOCAL")"
+ssh -i "$KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$USER_@$HOST" "mkdir -p '$STAGE' && chmod 700 '$STAGE'"
+scp -q -i "$KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$LOCAL" "$USER_@$HOST:$STAGE/$BN"
+{ cat "$PWF"; printf 'set -e; mkdir -p "$(dirname %q)"; install -m %q -o %q -g %q %q %q; rm -f %q; echo "installed %s -> %s"\n' \
+    "$REMOTE" "$MODE" "${OWNER%%:*}" "${OWNER##*:}" "$STAGE/$BN" "$REMOTE" "$STAGE/$BN" "$LOCAL" "$REMOTE"; } \
+  | ssh -i "$KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$USER_@$HOST" "sudo -S -p '' bash -s"

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# rroot — run a stdin script on the VM as root via `sudo -S` (password read from a
+# local file, never from argv, never committed). SSH password login on the VM is
+# deliberately left untouched (MISSION §2 rule 3).
+#   rroot < script.sh
+#   rroot 'apt-get update'      # single command (wrapped in bash -c)
+# Env: CSS_SUDOPW_FILE (default ~/.ssh/chogan_css.sudopw)
+set -euo pipefail
+HOST="${CSS_HOST:-212.80.8.87}"; USER_="${CSS_USER:-cssource}"; KEY="${CSS_KEY:-$HOME/.ssh/chogan_css}"
+PWF="${CSS_SUDOPW_FILE:-$HOME/.ssh/chogan_css.sudopw}"
+[ -r "$PWF" ] || { echo "rroot: sudo password file $PWF not found" >&2; exit 2; }
+SSH=(ssh -i "$KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=15 -o ConnectTimeout=20 "$USER_@$HOST")
+if [ $# -gt 0 ]; then
+  { cat "$PWF"; printf '%s\n' "$*"; } | "${SSH[@]}" "sudo -S -p '' bash -s"
+else
+  { cat "$PWF"; cat; } | "${SSH[@]}" "sudo -S -p '' bash -s"
+fi
