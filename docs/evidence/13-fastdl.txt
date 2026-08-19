@@ -1,0 +1,9 @@
+# FastDL functional + throttle test (MISSION §6.2) — 2026-08-19, from the operator's external machine
+$ curl http://212.80.8.87/cstrike/maps/_fastdl_selftest.bsp.bz2   (8,036,443-byte bz2)
+http=200 size=8036443B time=5.155980s avg=1558666B/s
+# => average 1.56 MB/s: nginx `limit_rate 1500k` (+ `limit_rate_after 512k` burst) is binding. Mandatory because
+#    FastDL shares the single IP with game traffic (MISSION §6.2).
+$ curl http://212.80.8.87/health                     -> 200 ("ok")
+$ curl http://212.80.8.87/cstrike/../../etc/passwd   -> 404 (path traversal blocked; only whitelisted content dirs+exts)
+$ curl http://212.80.8.87/                           -> 204 (no autoindex)
+# nginx bound to 212.80.8.87:80; sv_downloadurl "http://212.80.8.87/cstrike" in every server.cfg.
