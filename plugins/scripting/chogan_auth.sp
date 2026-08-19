@@ -1,42 +1,58 @@
 /**
  * chogan_auth.sp — Chogan phone-account authentication for CS:Source (MISSION §6.3).
  *
- * Flow (per connection):
- *   OnClientConnected ─► read `lt` userinfo key (setinfo lt <ticket>, set by the launcher
- *   BEFORE connect) ─► POST /v1/redeem to the local cg-agent (async, RIPExt) or INSERT a
- *   request row + poll (async, threaded MySQL) ─► callback resolves the client by SERIAL
- *   (never by index, MISSION §4.5) ─► bind account (natives + Chogan_OnAccountBound) or
- *   KickClient() (delayed to next frame by SourceMod itself, safe from any context).
+ * Where the ticket comes from (engine fact, docs/source-connect-protocol.md §3):
+ *   On this engine the client's userinfo (setinfo keys, incl. `lt`) is NOT in the
+ *   connect packet. It arrives as the first net_SetConVar on the netchannel right
+ *   after SIGNONSTATE_CONNECTED, i.e. AFTER OnClientConnect/OnClientConnected fired.
+ *   So GetClientInfo(client,"lt") is empty in OnClientConnected and becomes readable
+ *   at the first OnClientSettingsChanged (certainly by OnClientPutInServer).
  *
- * If `lt` is empty at OnClientConnected the plugin keeps looking at
- * OnClientSettingsChanged / OnClientPutInServer (probe 1 decides where the userinfo shows
- * up first) and also accepts the fallback console command `cg_ticket <token>` (probe 1
- * branch (b)) until the grace timer (cg_auth_grace) fires.
+ *   Therefore: OnClientConnected arms a grace timer (cg_auth_grace) and TryRedeem()
+ *   is attempted at OnClientConnected (completeness/logging), OnClientSettingsChanged,
+ *   OnClientAuthorized, OnClientPutInServer and OnClientPostAdminCheck. The first
+ *   hook where `lt` is non-empty wins; the `cg_ticket <token>` console command
+ *   (MISSION §5 probe 1 fallback (b)) is a second channel. A ticket is NEVER
+ *   redeemed twice on one connection (g_bTicketTried).
  *
- * Modes (cg_auth_mode): 0 off · 1 soft (API failure ⇒ cache ⇒ guest) · 2 hard (API failure
- * ⇒ cache ⇒ kick). A *rejected* ticket (invalid/used/expired/scope) is NOT an API failure and
- * kicks in both modes unless cg_auth_allow_invalid_as_guest 1. Fail open, not closed.
+ * Flow:
+ *   ticket ─► POST {cg_agent_url}/v1/redeem (RIPExt, async) or INSERT+poll
+ *   cg_auth_requests (threaded MySQL, async) ─► callback resolves the client by
+ *   SERIAL (MISSION §4.5) ─► bind account (natives + Chogan_OnAccountBound) or
+ *   KickClient() (SM queues the kick to the next frame; from inside a client
+ *   forward / command we additionally go through RequestFrame).
  *
- * Reconnect handling: authid+ip → account cache for cg_auth_cache_ttl seconds (default 600)
- * on top of the agent's own cache, so a manual reconnect that re-presents an already
- * redeemed ticket is not kicked. Circuit breaker: after cg_auth_breaker_fails consecutive
- * transport failures the plugin stops calling the agent for cg_auth_breaker_open seconds
- * and takes the fallback path immediately, so a dead agent never costs a full timeout per
- * connect (MISSION §6.3).
+ * Modes (cg_auth_mode): 0 off · 1 soft (agent failure ⇒ cache ⇒ guest) · 2 hard
+ * (agent failure ⇒ cache ⇒ kick). A REJECTED ticket (invalid/used/expired/scope) is
+ * not an agent failure: it kicks in both modes unless cg_auth_allow_invalid_as_guest 1.
+ * No ticket within cg_auth_grace: soft ⇒ guest, hard ⇒ kick. No answer within
+ * cg_auth_timeout ⇒ treated as api_down. Fail open, not closed (MISSION §6.3).
+ *
+ * Reconnect: authid+ip → account cache (cg_auth_cache_ttl, default 600 s) on top of
+ * the agent's own cache, so a manual reconnect that re-presents an already-redeemed
+ * ticket is not kicked. Circuit breaker: after cg_auth_breaker_fails consecutive
+ * transport failures the agent is not called for cg_auth_breaker_open seconds and
+ * the fallback path applies immediately (half-open after that: one trial request).
  *
  * NEVER blocking: no SQL_Query/SQL_FastQuery, no synchronous HTTP (MISSION §4.4).
  *
- * Contract with cg-agent (implement the agent to match; see plugins/README.md):
- *   POST {cg_agent_url}/v1/redeem  {"ticket","server_id","ip","authid","name","userid"}
- *     200 {"ok":true,"account_id":123,"display_name":"…","cached":false}
- *     200/4xx {"ok":false,"reason":"invalid|used|expired|scope|api_down|…"}
- *     anything else / 5xx / transport error / non-JSON ⇒ api_down
- *   POST {cg_agent_url}/v1/event   {"server_id","event":"join|leave","account_id","authid","ip","name","map"}
- *   GET  {cg_agent_url}/health
- *   SQL transport: table cg_auth_requests (plugins/sql/chogan_auth.sql); the agent fills
- *     verdict ('ok'|'reject'|'error'), account_id, display_name, reason.
+ * Contract with cg-agent (cg-agent/types.go, cg-agent/server.go in this repo):
+ *   POST /v1/redeem {"ticket","server_id","ip","authid","name"}
+ *     200 {"ok":true,"account_id":N,"display_name":"…","source":"api|cache|stub|local","cache_hit":b,"api_down":b}
+ *     200 {"ok":false,"reason":"invalid|expired|used|scope|api_down","cache_hit":b,"api_down":b}
+ *     400 = plugin bug (malformed / missing server_id), 5xx = agent bug ⇒ both api_down here
+ *   POST /v1/event  {"server_id","account_id","type":"join|leave","payload":{…}} → 202
+ *   GET  /health    → 200 always; .status "ok" | "degraded"
+ *   SQL transport (plugins/sql/chogan_auth.sql): plugin INSERTs cg_auth_requests
+ *     (ticket, server_id, ip, authid, name, created_at); agent sets verdict 'ok'|'fail',
+ *     account_id, display_name, reason, api_down, resolved_at; plugin polls by id.
  *
- * SourceMod 1.12, RIPExt 1.3.2 (optional at load time; required for transport "ripext").
+ * Config file: cfg/sourcemod/chogan.cfg (AutoExecConfig name "chogan" — the same file
+ * css-genconf renders per instance with cg_server_id / cg_agent_url / cg_auth_mode /
+ * cg_auth_transport; missing cvars keep their defaults).
+ *
+ * SourceMod 1.12 (pinned 1.12.0-git7179, docs/decisions.md D-005), RIPExt 1.3.2
+ * (optional at load time; required for transport "ripext").
  */
 
 #pragma semicolon 1
@@ -45,22 +61,24 @@
 #include <sourcemod>
 
 /* RIPExt is optional at load time so the SQL transport works on a box where rip.ext is
- * absent/broken. Every RIPExt native we use is marked optional in AskPluginLoad2. */
+ * absent or broken. Every RIPExt native we use is marked optional in AskPluginLoad2
+ * and only called when LibraryExists("ripext") is true. */
 #undef REQUIRE_EXTENSIONS
 #include <ripext>
 #define REQUIRE_EXTENSIONS
 
 #include <chogan>
 
-#define PLUGIN_VERSION   CHOGAN_AUTH_VERSION
-#define TICKET_MAX       512   /* userinfo values are capped at 260 bytes; cg_ticket may carry more */
-#define TAG              "[chogan_auth]"
+#define PLUGIN_VERSION  CHOGAN_AUTH_VERSION
+#define CG_TAG          "[chogan_auth]"
+#define CG_CFG_NAME     "chogan"   /* cfg/sourcemod/chogan.cfg */
+#define TICKET_MAX      512        /* userinfo values are capped at 260 bytes; cg_ticket may carry more */
 
-enum Transport
+enum CgTransport
 {
-	Transport_None = 0,
-	Transport_RipExt,
-	Transport_Sql
+	CgTransport_None = 0,
+	CgTransport_RipExt,
+	CgTransport_Sql
 };
 
 /* ------------------------------------------------------------------------- cvars */
@@ -78,13 +96,18 @@ ConVar g_cvBreakerOpen;     /* cg_auth_breaker_open */
 ConVar g_cvEvents;          /* cg_auth_events */
 ConVar g_cvDebug;           /* cg_auth_debug */
 
-/* ------------------------------------------------------------------------- state */
+/* ------------------------------------------------------------------------- per-client state */
 ChoganAuthState g_State[MAXPLAYERS + 1];
+int    g_iSerial[MAXPLAYERS + 1];                          /* captured at OnClientConnected */
 int    g_iAccountId[MAXPLAYERS + 1];
 char   g_sDisplayName[MAXPLAYERS + 1][CHOGAN_MAX_DISPLAYNAME];
-char   g_sSource[MAXPLAYERS + 1][16];    /* setinfo | cmd | cache | lateload | - */
-char   g_sReason[MAXPLAYERS + 1][32];
-char   g_sTicketHint[MAXPLAYERS + 1][12];/* first 8 chars of the ticket, for logs only */
+char   g_sSource[MAXPLAYERS + 1][16];                      /* setinfo | cmd | cache | lateload | none | - */
+char   g_sReason[MAXPLAYERS + 1][48];
+char   g_sTicketHint[MAXPLAYERS + 1][12];                  /* first chars of the ticket, logs only */
+bool   g_bTicketTried[MAXPLAYERS + 1];                     /* a ticket was sent for redemption on this connection */
+bool   g_bLateLoadClient[MAXPLAYERS + 1];                  /* already connected when the plugin loaded: never kick */
+bool   g_bLateVerdict[MAXPLAYERS + 1];                     /* watchdog resolved; a late callback may still apply */
+float  g_fConnectedAt[MAXPLAYERS + 1];
 float  g_fRedeemStart[MAXPLAYERS + 1];
 Handle g_hGraceTimer[MAXPLAYERS + 1];
 Handle g_hWatchdog[MAXPLAYERS + 1];
@@ -94,19 +117,21 @@ bool   g_bSqlInFlight[MAXPLAYERS + 1];
 int    g_iSqlPollErrors[MAXPLAYERS + 1];
 bool   g_bJoinEventSent[MAXPLAYERS + 1];
 
-Transport g_Transport = Transport_None;
-bool      g_bRipExt = false;
-Database  g_hDb = null;
-bool      g_bDbConnecting = false;
-char      g_sServerId[64];
-bool      g_bLateLoad = false;
+/* ------------------------------------------------------------------------- globals */
+CgTransport g_Transport = CgTransport_None;
+bool        g_bRipExt = false;
+Database    g_hDb = null;
+bool        g_bDbConnecting = false;
+char        g_sServerId[64];
+bool        g_bLateLoad = false;
+int         g_iSyncDepth = 0;   /* > 0 while inside a client forward / client command: kick via RequestFrame */
 
 /* circuit breaker */
 int   g_iBreakerFails = 0;
 float g_fBreakerOpenUntil = 0.0;
 int   g_iBreakerTrips = 0;
 
-/* reconnect cache: key "<ip>|<authid>" -> {account_id, expires_at(unix)} + display name */
+/* reconnect cache: key "<ip>|<authid>" (and "<ip>|") -> {account_id, expires_at(unix)} + display name */
 StringMap g_hCacheAcct;
 StringMap g_hCacheName;
 
@@ -121,7 +146,7 @@ public Plugin myinfo =
 {
 	name        = "[Chogan] Auth (phone-account login)",
 	author      = "Chogan build (autonomous run)",
-	description = "Redeems the launcher ticket (setinfo lt) against cg-agent; binds account or kicks",
+	description = "Redeems the launcher ticket (setinfo lt / cg_ticket) against cg-agent; binds account or kicks",
 	version     = PLUGIN_VERSION,
 	url         = "https://github.com/Shadow-Reza/CsSource"
 };
@@ -140,24 +165,29 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("Chogan_GetServerId",    Native_GetServerId);
 	RegPluginLibrary("chogan_auth");
 
-	/* RIPExt natives used below — optional so the plugin loads without rip.ext */
+	/* RIPExt natives used below — optional so the plugin loads without rip.ext.
+	 * Names as registered in sm-ripext 1.3.2 http_natives.cpp / json_natives.cpp. */
 	MarkNativeAsOptional("HTTPRequest.HTTPRequest");
 	MarkNativeAsOptional("HTTPRequest.SetHeader");
 	MarkNativeAsOptional("HTTPRequest.Get");
 	MarkNativeAsOptional("HTTPRequest.Post");
-	MarkNativeAsOptional("HTTPRequest.ConnectTimeout.set");
 	MarkNativeAsOptional("HTTPRequest.ConnectTimeout.get");
-	MarkNativeAsOptional("HTTPRequest.Timeout.set");
+	MarkNativeAsOptional("HTTPRequest.ConnectTimeout.set");
 	MarkNativeAsOptional("HTTPRequest.Timeout.get");
+	MarkNativeAsOptional("HTTPRequest.Timeout.set");
+	MarkNativeAsOptional("HTTPRequest.MaxRedirects.get");
+	MarkNativeAsOptional("HTTPRequest.MaxRedirects.set");
 	MarkNativeAsOptional("HTTPResponse.Status.get");
 	MarkNativeAsOptional("HTTPResponse.Data.get");
 	MarkNativeAsOptional("HTTPResponse.GetHeader");
 	MarkNativeAsOptional("JSONObject.JSONObject");
+	MarkNativeAsOptional("JSONObject.Set");
 	MarkNativeAsOptional("JSONObject.SetString");
 	MarkNativeAsOptional("JSONObject.SetInt");
 	MarkNativeAsOptional("JSONObject.SetBool");
 	MarkNativeAsOptional("JSONObject.GetBool");
 	MarkNativeAsOptional("JSONObject.GetInt");
+	MarkNativeAsOptional("JSONObject.GetInt64");
 	MarkNativeAsOptional("JSONObject.GetString");
 	MarkNativeAsOptional("JSONObject.HasKey");
 	MarkNativeAsOptional("JSONObject.IsNull");
@@ -172,34 +202,34 @@ public void OnPluginStart()
 		FCVAR_NOTIFY | FCVAR_DONTRECORD | FCVAR_SPONLY);
 
 	g_cvMode = CreateConVar("cg_auth_mode", "1",
-		"0 = off, 1 = soft (API failure -> cache -> guest), 2 = hard (API failure -> cache -> kick)",
+		"0 = off, 1 = soft (agent failure -> cache -> guest), 2 = hard (agent failure -> cache -> kick)",
 		FCVAR_NONE, true, 0.0, true, 2.0);
 	g_cvAgentUrl = CreateConVar("cg_agent_url", "http://127.0.0.1:8480",
 		"Base URL of the local cg-agent (no trailing slash)", FCVAR_NONE);
 	g_cvServerId = CreateConVar("cg_server_id", "",
-		"REQUIRED. Server id the launcher tickets are scoped to (e.g. pub1, dm, m1)", FCVAR_NONE);
+		"REQUIRED. Server id the launcher tickets are scoped to (pub1, pub2, dm, gg, awp, m1, m2)", FCVAR_NONE);
 	g_cvTimeout = CreateConVar("cg_auth_timeout", "4.0",
-		"Seconds to wait for the agent (HTTP timeout / SQL poll deadline) before the failure path",
+		"Seconds to wait for the agent (HTTP timeout / SQL poll deadline) before taking the api_down path",
 		FCVAR_NONE, true, 0.5, true, 60.0);
 	g_cvGrace = CreateConVar("cg_auth_grace", "8.0",
-		"Seconds after connect the client has to present a ticket (setinfo lt or cg_ticket) before no-ticket handling",
+		"Seconds after connect the client has to present a ticket (setinfo lt or cg_ticket) before the no-ticket policy applies",
 		FCVAR_NONE, true, 1.0, true, 120.0);
 	g_cvTransport = CreateConVar("cg_auth_transport", "ripext",
-		"Transport to cg-agent: \"ripext\" (async HTTP, default) or \"sql\" (threaded MySQL fallback via databases.cfg \"chogan\")",
+		"Transport to cg-agent: \"ripext\" (async HTTP, default) or \"sql\" (threaded MySQL via databases.cfg section \"chogan\")",
 		FCVAR_NONE);
-	g_cvKickMsg = CreateConVar("cg_auth_kick_msg", "Chogan: please start the game from the Chogan launcher (login required)",
-		"Kick reason shown to the client", FCVAR_NONE);
+	g_cvKickMsg = CreateConVar("cg_auth_kick_msg", "Chogan: login required - please start the game from the Chogan launcher",
+		"Kick reason shown to the client (the engine appends a period)", FCVAR_NONE);
 	g_cvInvalidGuest = CreateConVar("cg_auth_allow_invalid_as_guest", "0",
 		"1 = a rejected ticket (invalid/used/expired/scope) lets the client in as guest instead of kicking",
 		FCVAR_NONE, true, 0.0, true, 1.0);
 	g_cvCacheTtl = CreateConVar("cg_auth_cache_ttl", "600",
-		"Seconds an authid+ip -> account cache entry stays valid (reconnect / agent-down fallback)",
+		"Seconds an authid+ip -> account cache entry stays valid (reconnect / agent-down fallback); 0 disables",
 		FCVAR_NONE, true, 0.0, true, 86400.0);
 	g_cvBreakerFails = CreateConVar("cg_auth_breaker_fails", "3",
 		"Consecutive transport failures that open the circuit breaker (0 = disabled)",
 		FCVAR_NONE, true, 0.0, true, 100.0);
 	g_cvBreakerOpen = CreateConVar("cg_auth_breaker_open", "20.0",
-		"Seconds the breaker stays open (agent not called, fallback path taken immediately)",
+		"Seconds the breaker stays open (agent not called, fallback path applies immediately); then one trial request",
 		FCVAR_NONE, true, 1.0, true, 600.0);
 	g_cvEvents = CreateConVar("cg_auth_events", "1",
 		"1 = post join/leave events for bound accounts to the agent (fire and forget)",
@@ -210,7 +240,9 @@ public void OnPluginStart()
 	g_cvTransport.AddChangeHook(OnTransportCvarChanged);
 	g_cvServerId.AddChangeHook(OnServerIdCvarChanged);
 
-	AutoExecConfig(true, "chogan_auth");
+	/* cfg/sourcemod/chogan.cfg — rendered per instance by css-genconf; created with
+	 * defaults if it does not exist. */
+	AutoExecConfig(true, CG_CFG_NAME);
 
 	RegConsoleCmd("cg_ticket", Cmd_Ticket,
 		"Present the Chogan login ticket by console command (fallback to setinfo lt): cg_ticket <token>");
@@ -218,9 +250,11 @@ public void OnPluginStart()
 		"Show Chogan auth status of every client (account, source, guest) and plugin health");
 	RegAdminCmd("sm_cgauth_health", Cmd_Health, ADMFLAG_GENERIC,
 		"Async GET {cg_agent_url}/health and log the result");
+	RegAdminCmd("sm_cgauth_flushcache", Cmd_FlushCache, ADMFLAG_RCON,
+		"Drop the in-plugin authid+ip -> account reconnect cache");
 
-	g_fwdBound    = new GlobalForward("Chogan_OnAccountBound",  ET_Ignore, Param_Cell, Param_Cell, Param_String);
-	g_fwdResolved = new GlobalForward("Chogan_OnAuthResolved",  ET_Ignore, Param_Cell, Param_Cell, Param_String);
+	g_fwdBound    = new GlobalForward("Chogan_OnAccountBound", ET_Ignore, Param_Cell, Param_Cell, Param_String);
+	g_fwdResolved = new GlobalForward("Chogan_OnAuthResolved", ET_Ignore, Param_Cell, Param_Cell, Param_String);
 
 	g_hCacheAcct = new StringMap();
 	g_hCacheName = new StringMap();
@@ -231,36 +265,63 @@ public void OnPluginStart()
 	}
 
 	g_bRipExt = LibraryExists("ripext");
+	g_cvServerId.GetString(g_sServerId, sizeof(g_sServerId));
+	TrimString(g_sServerId);
 
 	CreateTimer(60.0, Timer_PruneCache, _, TIMER_REPEAT);
 
-	LogMessage("%s v%s loaded (late=%d, ripext=%d)", TAG, PLUGIN_VERSION, g_bLateLoad, g_bRipExt);
+	LogMessage("%s v%s loaded (late=%d, ripext=%d)", CG_TAG, PLUGIN_VERSION, g_bLateLoad, g_bRipExt);
 }
 
 public void OnAllPluginsLoaded()
 {
-	if (!g_bLateLoad)
+	if (g_bLateLoad)
 	{
-		return;
+		/* give AutoExecConfig / OnConfigsExecuted one moment to settle the transport,
+		 * then deal with everybody who is already connected */
+		CreateTimer(1.0, Timer_LateLoad);
 	}
-	/* Late load (plugin reload mid-session): everybody already connected becomes a
-	 * guest. Their tickets have been redeemed already; mass-kicking a full server on a
-	 * plugin reload is worse than one session of guests. They re-auth on next connect.
-	 * (Recorded in docs/OPEN-QUESTIONS.md by the orchestrator.) */
+}
+
+public Action Timer_LateLoad(Handle timer)
+{
 	int n = 0;
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientConnected(i) && !IsFakeClient(i))
+		if (!IsClientConnected(i) || IsFakeClient(i))
 		{
-			ResetClient(i);
-			SetGuest(i, "lateload", "lateload");
-			n++;
+			continue;
 		}
+		if (g_State[i] != ChoganAuth_None)
+		{
+			continue; /* connected after we loaded: handled by OnClientConnected */
+		}
+		/* Late load (plugin (re)load mid-session). Their `lt` is still in the userinfo,
+		 * so we try to redeem it once more: the agent answers from its ticket cache for
+		 * a recent redemption (ok), or "used" when that cache expired. A late-load
+		 * client is NEVER kicked — every failure path becomes guest. They re-auth on
+		 * their next connect. */
+		ResetClient(i);
+		g_bLateLoadClient[i] = true;
+		g_iSerial[i] = GetClientSerial(i);
+		g_fConnectedAt[i] = GetEngineTime();
+		if (g_cvMode.IntValue == 0)
+		{
+			g_State[i] = ChoganAuth_Skipped;
+			strcopy(g_sReason[i], sizeof(g_sReason[]), "mode_off");
+			continue;
+		}
+		g_State[i] = ChoganAuth_Waiting;
+		strcopy(g_sSource[i], sizeof(g_sSource[]), "lateload");
+		g_hGraceTimer[i] = CreateTimer(g_cvGrace.FloatValue, Timer_Grace, g_iSerial[i]);
+		TryRedeem(i, "lateload");
+		n++;
 	}
 	if (n > 0)
 	{
-		LogMessage("%s late load: %d already-connected client(s) marked guest (source=lateload)", TAG, n);
+		LogMessage("%s late load: %d already-connected client(s) re-evaluated (never kicked; failures => guest)", CG_TAG, n);
 	}
+	return Plugin_Stop;
 }
 
 public void OnConfigsExecuted()
@@ -269,7 +330,8 @@ public void OnConfigsExecuted()
 	TrimString(g_sServerId);
 	if (g_sServerId[0] == '\0')
 	{
-		LogError("%s cg_server_id is EMPTY — set it in cfg/sourcemod/chogan_auth.cfg. Every redeem will fail (soft mode => guests).", TAG);
+		LogError("%s cg_server_id is EMPTY - set it in cfg/sourcemod/%s.cfg. Every redeem takes the api_down path (soft mode => guests).",
+			CG_TAG, CG_CFG_NAME);
 	}
 	ResolveTransport();
 }
@@ -320,11 +382,11 @@ void ResolveTransport()
 	g_cvTransport.GetString(want, sizeof(want));
 	TrimString(want);
 
-	Transport before = g_Transport;
+	CgTransport before = g_Transport;
 
 	if (StrEqual(want, "sql", false))
 	{
-		g_Transport = Transport_Sql;
+		g_Transport = CgTransport_Sql;
 		if (g_hDb == null)
 		{
 			ConnectDb();
@@ -334,16 +396,16 @@ void ResolveTransport()
 	{
 		if (!StrEqual(want, "ripext", false))
 		{
-			LogError("%s cg_auth_transport \"%s\" unknown — using \"ripext\"", TAG, want);
+			LogError("%s cg_auth_transport \"%s\" unknown - using \"ripext\"", CG_TAG, want);
 		}
 		if (g_bRipExt)
 		{
-			g_Transport = Transport_RipExt;
+			g_Transport = CgTransport_RipExt;
 		}
 		else if (SQL_CheckConfig("chogan"))
 		{
-			LogError("%s RIPExt (rip.ext) is not loaded — falling back to the SQL transport (databases.cfg \"chogan\")", TAG);
-			g_Transport = Transport_Sql;
+			LogError("%s RIPExt (rip.ext) is not loaded - falling back to the SQL transport (databases.cfg \"chogan\")", CG_TAG);
+			g_Transport = CgTransport_Sql;
 			if (g_hDb == null)
 			{
 				ConnectDb();
@@ -351,35 +413,27 @@ void ResolveTransport()
 		}
 		else
 		{
-			LogError("%s RIPExt is not loaded and no \"chogan\" database config exists — NO TRANSPORT. Every redeem takes the api_down path.", TAG);
-			g_Transport = Transport_None;
+			LogError("%s RIPExt is not loaded and databases.cfg has no \"chogan\" section - NO TRANSPORT. Every redeem takes the api_down path.", CG_TAG);
+			g_Transport = CgTransport_None;
 		}
 	}
 
 	if (before != g_Transport)
 	{
-		LogMessage("%s transport = %s", TAG, TransportName(g_Transport));
+		char tname[16];
+		TransportNameCopy(g_Transport, tname, sizeof(tname));
+		LogMessage("%s transport = %s", CG_TAG, tname);
 	}
 }
 
-void TransportNameCopy(Transport t, char[] buf, int maxlen)
+void TransportNameCopy(CgTransport t, char[] buf, int maxlen)
 {
 	switch (t)
 	{
-		case Transport_RipExt: strcopy(buf, maxlen, "ripext");
-		case Transport_Sql:    strcopy(buf, maxlen, "sql");
-		default:               strcopy(buf, maxlen, "none");
+		case CgTransport_RipExt: strcopy(buf, maxlen, "ripext");
+		case CgTransport_Sql:    strcopy(buf, maxlen, "sql");
+		default:                 strcopy(buf, maxlen, "none");
 	}
-}
-
-/* small helper so TransportName() can be used inline in format calls */
-char g_sTransportNameBuf[16];
-char[] TransportName(Transport t)
-{
-	TransportNameCopy(t, g_sTransportNameBuf, sizeof(g_sTransportNameBuf));
-	char out[16];
-	strcopy(out, sizeof(out), g_sTransportNameBuf);
-	return out;
 }
 
 /* ============================================================================ */
@@ -388,6 +442,8 @@ char[] TransportName(Transport t)
 public void OnClientConnected(int client)
 {
 	ResetClient(client);
+	g_iSerial[client] = GetClientSerial(client);
+	g_fConnectedAt[client] = GetEngineTime();
 
 	if (IsFakeClient(client))
 	{
@@ -405,31 +461,38 @@ public void OnClientConnected(int client)
 	g_State[client] = ChoganAuth_Waiting;
 
 	/* grace: the client has this long to present a ticket by any channel */
-	g_hGraceTimer[client] = CreateTimer(g_cvGrace.FloatValue, Timer_Grace, GetClientSerial(client));
+	g_hGraceTimer[client] = CreateTimer(g_cvGrace.FloatValue, Timer_Grace, g_iSerial[client]);
 
-	Debug("client %d (%N) connected: waiting for ticket (grace %.1fs)", client, client, g_cvGrace.FloatValue);
+	DbgLog("client %d serial %d (%N) connected: waiting for ticket (grace %.1fs)",
+		client, g_iSerial[client], client, g_cvGrace.FloatValue);
 
-	TryReadSetinfoToken(client, "OnClientConnected");
+	/* Expected to find nothing here (userinfo not received yet, see header) — logged
+	 * for completeness so docs/probes.md can cite it. */
+	SyncTryRedeem(client, "OnClientConnected");
 }
 
 public void OnClientSettingsChanged(int client)
 {
-	if (client >= 1 && client <= MaxClients && g_State[client] == ChoganAuth_Waiting)
+	if (client >= 1 && client <= MaxClients)
 	{
-		TryReadSetinfoToken(client, "OnClientSettingsChanged");
+		SyncTryRedeem(client, "OnClientSettingsChanged");
 	}
+}
+
+public void OnClientAuthorized(int client, const char[] auth)
+{
+	SyncTryRedeem(client, "OnClientAuthorized");
 }
 
 public void OnClientPutInServer(int client)
 {
-	if (g_State[client] == ChoganAuth_Waiting)
-	{
-		TryReadSetinfoToken(client, "OnClientPutInServer");
-	}
+	SyncTryRedeem(client, "OnClientPutInServer");
 }
 
 public void OnClientPostAdminCheck(int client)
 {
+	SyncTryRedeem(client, "OnClientPostAdminCheck");
+
 	/* the auth id usually arrives after we bound — refresh the cache key with it */
 	if (g_State[client] == ChoganAuth_Bound)
 	{
@@ -466,7 +529,7 @@ public void OnMapStart()
 		}
 		else if (g_State[i] == ChoganAuth_Pending && g_hWatchdog[i] == null)
 		{
-			g_hWatchdog[i] = CreateTimer(g_cvTimeout.FloatValue + 1.5, Timer_Watchdog, GetClientSerial(i));
+			g_hWatchdog[i] = CreateTimer(g_cvTimeout.FloatValue + 1.0, Timer_Watchdog, GetClientSerial(i));
 		}
 	}
 }
@@ -474,11 +537,16 @@ public void OnMapStart()
 void ResetClient(int client)
 {
 	g_State[client] = ChoganAuth_None;
+	g_iSerial[client] = 0;
 	g_iAccountId[client] = 0;
 	g_sDisplayName[client][0] = '\0';
 	strcopy(g_sSource[client], sizeof(g_sSource[]), "-");
 	g_sReason[client][0] = '\0';
 	g_sTicketHint[client][0] = '\0';
+	g_bTicketTried[client] = false;
+	g_bLateLoadClient[client] = false;
+	g_bLateVerdict[client] = false;
+	g_fConnectedAt[client] = 0.0;
 	g_fRedeemStart[client] = 0.0;
 	g_iSqlRowId[client] = 0;
 	g_bSqlInFlight[client] = false;
@@ -492,41 +560,81 @@ void ResetClient(int client)
 /* ============================================================================ */
 /* ticket acquisition                                                            */
 
-void TryReadSetinfoToken(int client, const char[] where)
+/** TryRedeem from a synchronous client forward / client command: kicks decided in
+ *  here are deferred with RequestFrame (see KickForAuth). */
+void SyncTryRedeem(int client, const char[] where)
 {
-	if (g_State[client] != ChoganAuth_Waiting || !IsClientConnected(client))
+	g_iSyncDepth++;
+	TryRedeem(client, where);
+	g_iSyncDepth--;
+}
+
+/** May a (new) redemption start for this client right now? */
+bool CanStartRedeem(int client)
+{
+	if (client < 1 || client > MaxClients || !IsClientConnected(client))
+	{
+		return false;
+	}
+	if (g_bTicketTried[client])
+	{
+		return false; /* never redeem twice on one connection */
+	}
+	if (g_State[client] == ChoganAuth_Waiting)
+	{
+		return true;
+	}
+	/* soft-mode guest who never presented a ticket (grace expired): a late
+	 * cg_ticket may still bind the account */
+	if (g_State[client] == ChoganAuth_Guest)
+	{
+		return true;
+	}
+	return false;
+}
+
+/** Read `lt` from the userinfo; start the redemption the first time it is non-empty. */
+void TryRedeem(int client, const char[] where)
+{
+	if (!CanStartRedeem(client))
 	{
 		return;
 	}
 	char token[TICKET_MAX];
 	if (!GetClientInfo(client, "lt", token, sizeof(token)))
 	{
+		DbgLog("client %d: lt not readable at %s", client, where);
 		return;
 	}
 	TrimString(token);
 	if (token[0] == '\0')
 	{
+		DbgLog("client %d: lt empty at %s", client, where);
 		return;
 	}
-	Debug("client %d: lt found at %s (%d bytes)", client, where, strlen(token));
-	StartRedeem(client, token, "setinfo");
+	StartRedeem(client, token, "setinfo", where);
 }
 
 public Action Cmd_Ticket(int client, int args)
 {
 	if (client == 0)
 	{
-		ReplyToCommand(client, "%s cg_ticket is a client command.", TAG);
+		ReplyToCommand(client, "%s cg_ticket is a client command.", CG_TAG);
 		return Plugin_Handled;
 	}
 	if (!IsClientConnected(client))
 	{
 		return Plugin_Handled;
 	}
-
-	if (g_State[client] != ChoganAuth_Waiting)
+	if (IsFakeClient(client))
 	{
-		ReplyToCommand(client, "%s ticket ignored (state=%s).", TAG, StateName(g_State[client]));
+		return Plugin_Handled;
+	}
+	if (!CanStartRedeem(client))
+	{
+		char st[12];
+		StateNameCopy(g_State[client], st, sizeof(st));
+		ReplyToCommand(client, "%s ticket ignored (state=%s, tried=%d).", CG_TAG, st, g_bTicketTried[client]);
 		return Plugin_Handled;
 	}
 
@@ -538,13 +646,15 @@ public Action Cmd_Ticket(int client, int args)
 	}
 	if (token[0] == '\0')
 	{
-		ReplyToCommand(client, "%s usage: cg_ticket <token>", TAG);
+		ReplyToCommand(client, "%s usage: cg_ticket <token>", CG_TAG);
 		return Plugin_Handled;
 	}
 
-	Debug("client %d: ticket via cg_ticket command (%d bytes)", client, strlen(token));
-	StartRedeem(client, token, "cmd");
-	ReplyToCommand(client, "%s ticket received, verifying...", TAG);
+	g_iSyncDepth++;
+	StartRedeem(client, token, "cmd", "cg_ticket");
+	g_iSyncDepth--;
+
+	ReplyToCommand(client, "%s ticket received, verifying...", CG_TAG);
 	return Plugin_Handled;
 }
 
@@ -553,7 +663,7 @@ public Action Timer_Grace(Handle timer, any serial)
 	int client = GetClientFromSerial(serial);
 	if (client <= 0)
 	{
-		return Plugin_Stop;
+		return Plugin_Stop; /* client gone; ResetClient already dropped our handle */
 	}
 	g_hGraceTimer[client] = null;
 
@@ -563,13 +673,20 @@ public Action Timer_Grace(Handle timer, any serial)
 	}
 
 	/* one last look at the userinfo before deciding */
-	TryReadSetinfoToken(client, "grace-expiry");
+	TryRedeem(client, "grace-expiry");
 	if (g_State[client] != ChoganAuth_Waiting)
 	{
 		return Plugin_Stop;
 	}
 
-	if (g_cvMode.IntValue >= 2)
+	LogMessage("%s client %d (%N): no ticket within %.1fs (neither setinfo lt nor cg_ticket) - mode=%d",
+		CG_TAG, client, client, g_cvGrace.FloatValue, g_cvMode.IntValue);
+
+	if (g_bLateLoadClient[client])
+	{
+		SetGuest(client, "no_ticket", "lateload");
+	}
+	else if (g_cvMode.IntValue >= 2)
 	{
 		KickForAuth(client, "no_ticket");
 	}
@@ -583,12 +700,10 @@ public Action Timer_Grace(Handle timer, any serial)
 /* ============================================================================ */
 /* redemption                                                                    */
 
-void StartRedeem(int client, const char[] ticket, const char[] source)
+void StartRedeem(int client, const char[] ticket, const char[] source, const char[] where)
 {
-	if (g_State[client] != ChoganAuth_Waiting)
-	{
-		return;
-	}
+	g_bTicketTried[client] = true;
+	g_bLateVerdict[client] = false;
 	g_State[client] = ChoganAuth_Pending;
 	strcopy(g_sSource[client], sizeof(g_sSource[]), source);
 	strcopy(g_sTicketHint[client], sizeof(g_sTicketHint[]), ticket); /* truncates to 11 chars */
@@ -597,25 +712,31 @@ void StartRedeem(int client, const char[] ticket, const char[] source)
 	delete g_hGraceTimer[client];
 	/* the watchdog is the safety net for a callback that never fires or throws */
 	delete g_hWatchdog[client];
-	g_hWatchdog[client] = CreateTimer(g_cvTimeout.FloatValue + 1.5, Timer_Watchdog, GetClientSerial(client));
+	g_hWatchdog[client] = CreateTimer(g_cvTimeout.FloatValue + 1.0, Timer_Watchdog, GetClientSerial(client));
+
+	char tname[16];
+	TransportNameCopy(g_Transport, tname, sizeof(tname));
+	LogMessage("%s client %d (%N): ticket via %s at %s (%d bytes, %.3fs after connect) -> redeem [transport=%s]",
+		CG_TAG, client, client, source, where, strlen(ticket),
+		GetEngineTime() - g_fConnectedAt[client], tname);
 
 	if (g_sServerId[0] == '\0')
 	{
-		HandleApiDown(client, "no_server_id");
+		HandleApiDown(client, "no_server_id", false);
 		return;
 	}
 	if (BreakerIsOpen())
 	{
-		Debug("client %d: breaker open, skipping agent", client);
-		HandleApiDown(client, "breaker_open");
+		DbgLog("client %d: breaker open, skipping agent", client);
+		HandleApiDown(client, "breaker_open", false);
 		return;
 	}
 
 	switch (g_Transport)
 	{
-		case Transport_RipExt: SendRedeemHttp(client, ticket);
-		case Transport_Sql:    SendRedeemSql(client, ticket);
-		default:               HandleApiDown(client, "no_transport");
+		case CgTransport_RipExt: SendRedeemHttp(client, ticket);
+		case CgTransport_Sql:    SendRedeemSql(client, ticket);
+		default:                 HandleApiDown(client, "no_transport", false);
 	}
 }
 
@@ -629,9 +750,10 @@ public Action Timer_Watchdog(Handle timer, any serial)
 	g_hWatchdog[client] = null;
 	if (g_State[client] == ChoganAuth_Pending)
 	{
-		LogMessage("%s client %d (%N): redeem still pending after %.1fs — watchdog takes the api_down path",
-			TAG, client, client, GetEngineTime() - g_fRedeemStart[client]);
-		HandleApiDown(client, "timeout");
+		LogMessage("%s client %d (%N): redeem still pending after %.1fs - watchdog takes the api_down path",
+			CG_TAG, client, client, GetEngineTime() - g_fRedeemStart[client]);
+		g_bLateVerdict[client] = true;
+		HandleApiDown(client, "timeout", true);
 	}
 	return Plugin_Stop;
 }
@@ -645,13 +767,18 @@ void GetIdentity(int client, char[] ip, int iplen, char[] authid, int authlen, c
 		ip[0] = '\0';
 	}
 	/* Steam2 first (what RevEmu hands out), then the raw engine string. Both return
-	 * false while the client is not authorized yet — that is normal at connect time. */
+	 * false while the client is not authorized yet (SM has no auth string before
+	 * OnClientAuthorized) — that is normal early in the connect. */
 	if (!GetClientAuthId(client, AuthId_Steam2, authid, authlen))
 	{
 		if (!GetClientAuthId(client, AuthId_Engine, authid, authlen))
 		{
 			authid[0] = '\0';
 		}
+	}
+	if (StrEqual(authid, "STEAM_ID_PENDING") || StrEqual(authid, "STEAM_ID_LAN") || StrEqual(authid, "BOT"))
+	{
+		authid[0] = '\0';
 	}
 	if (!GetClientName(client, name, namelen))
 	{
@@ -676,6 +803,12 @@ void BuildUrl(char[] url, int maxlen, const char[] path)
 
 void SendRedeemHttp(int client, const char[] ticket)
 {
+	if (!g_bRipExt)
+	{
+		HandleApiDown(client, "ripext_missing", false);
+		return;
+	}
+
 	char ip[48], authid[64], name[MAX_NAME_LENGTH];
 	GetIdentity(client, ip, sizeof(ip), authid, sizeof(authid), name, sizeof(name));
 
@@ -688,28 +821,34 @@ void SendRedeemHttp(int client, const char[] ticket)
 	body.SetString("ip", ip);
 	body.SetString("authid", authid);
 	body.SetString("name", name);
-	body.SetInt("userid", GetClientUserId(client));
 
 	HTTPRequest req = new HTTPRequest(url);
 	req.ConnectTimeout = 2;
 	req.Timeout = RoundToCeil(g_cvTimeout.FloatValue);
 	req.SetHeader("Accept", "application/json");
-	req.Post(body, OnRedeemResponse, GetClientSerial(client)); /* handle freed by RIPExt */
-	delete body;                                                /* body already serialised */
+	req.Post(body, OnRedeemResponse, GetClientSerial(client)); /* request handle is freed by RIPExt */
+	delete body;                                                /* body was serialised inside Post() */
 
-	Debug("client %d: POST %s (authid=%s ip=%s)", client, url, authid, ip);
+	DbgLog("client %d: POST %s (authid=\"%s\" ip=%s)", client, url, authid, ip);
 }
 
+/**
+ * RIPExt always invokes the callback (also on transport failure: then Status == 0 and
+ * `error` holds the cURL message). HTTPResponse.Data throws on a non-JSON body, so
+ * the content type is checked first. Runs on the game thread (RIPExt frame hook).
+ */
 public void OnRedeemResponse(HTTPResponse response, any serial, const char[] error)
 {
 	int client = GetClientFromSerial(serial);
 	if (client <= 0)
 	{
-		return; /* slot reused or client gone — never touch by index (MISSION §4.5) */
+		return; /* slot reused or client gone - never touch by index (MISSION §4.5) */
 	}
-	if (g_State[client] != ChoganAuth_Pending)
+
+	bool late = (g_State[client] != ChoganAuth_Pending);
+	if (late && !(g_State[client] == ChoganAuth_Guest && g_bLateVerdict[client]))
 	{
-		return; /* watchdog or disconnect already resolved this connection */
+		return; /* already resolved by something else (disconnect, kick, lateload guest) */
 	}
 
 	int status = view_as<int>(response.Status);
@@ -717,46 +856,72 @@ public void OnRedeemResponse(HTTPResponse response, any serial, const char[] err
 	if (error[0] != '\0' || status == 0)
 	{
 		char why[128];
-		FormatEx(why, sizeof(why), "transport:%s", (error[0] != '\0') ? error : "status0");
-		HandleApiDown(client, why);
+		if (error[0] != '\0')
+		{
+			FormatEx(why, sizeof(why), "transport:%s", error);
+		}
+		else
+		{
+			strcopy(why, sizeof(why), "transport:status0");
+		}
+		if (!late)
+		{
+			HandleApiDown(client, why, true);
+		}
+		else
+		{
+			DbgLog("client %d: late transport failure ignored (%s)", client, why);
+		}
 		return;
 	}
-	if (status >= 500)
+	if (status >= 500 || status == 400)
 	{
 		char why[32];
 		FormatEx(why, sizeof(why), "http_%d", status);
-		HandleApiDown(client, why);
+		if (!late)
+		{
+			HandleApiDown(client, why, true);
+		}
 		return;
 	}
 
 	char ctype[96];
 	if (!response.GetHeader("Content-Type", ctype, sizeof(ctype)) || StrContains(ctype, "json", false) == -1)
 	{
-		/* .Data would throw on a non-JSON body and abort this callback */
 		char why[64];
 		FormatEx(why, sizeof(why), "non_json_http_%d", status);
-		HandleApiDown(client, why);
+		if (!late)
+		{
+			HandleApiDown(client, why, true);
+		}
 		return;
 	}
 
-	JSONObject data = view_as<JSONObject>(response.Data);
+	JSONObject data = view_as<JSONObject>(response.Data); /* owned by RIPExt, do not delete */
 	if (data == null || !data.HasKey("ok"))
 	{
 		char why[64];
 		FormatEx(why, sizeof(why), "bad_body_http_%d", status);
-		HandleApiDown(client, why);
+		if (!late)
+		{
+			HandleApiDown(client, why, true);
+		}
 		return;
 	}
 
 	if (data.GetBool("ok"))
 	{
-		int accountId = data.GetInt("account_id");
-		if (accountId == 0 && data.HasKey("account_id"))
+		int accountId = 0;
+		if (data.HasKey("account_id") && !data.IsNull("account_id"))
 		{
-			char tmp[32];
-			if (data.GetString("account_id", tmp, sizeof(tmp)))
+			accountId = data.GetInt("account_id");
+			if (accountId <= 0)
 			{
-				accountId = StringToInt(tmp);
+				char tmp[32];
+				if (data.GetInt64("account_id", tmp, sizeof(tmp)))
+				{
+					accountId = StringToInt(tmp);
+				}
 			}
 		}
 		char dname[CHOGAN_MAX_DISPLAYNAME];
@@ -764,14 +929,41 @@ public void OnRedeemResponse(HTTPResponse response, any serial, const char[] err
 		{
 			dname[0] = '\0';
 		}
-		bool cached = data.HasKey("cached") && data.GetBool("cached");
+		char src[16];
+		if (!data.GetString("source", src, sizeof(src)))
+		{
+			src[0] = '\0';
+		}
+		bool cacheHit = data.HasKey("cache_hit") && !data.IsNull("cache_hit") && data.GetBool("cache_hit");
+
 		if (accountId <= 0)
 		{
-			HandleApiDown(client, "ok_without_account_id");
+			if (!late)
+			{
+				HandleApiDown(client, "ok_without_account_id", true);
+			}
 			return;
 		}
 		BreakerSuccess();
-		BindClient(client, accountId, dname, cached ? "ok_agent_cache" : "ok");
+
+		char reason[32];
+		if (cacheHit || StrEqual(src, "cache"))
+		{
+			strcopy(reason, sizeof(reason), "ok_agent_cache");
+		}
+		else if (src[0] != '\0')
+		{
+			FormatEx(reason, sizeof(reason), "ok_%s", src);
+		}
+		else
+		{
+			strcopy(reason, sizeof(reason), "ok");
+		}
+		if (late)
+		{
+			LogMessage("%s client %d (%N): late agent answer after watchdog - upgrading guest to account", CG_TAG, client, client);
+		}
+		BindClient(client, accountId, dname, reason);
 		return;
 	}
 
@@ -780,13 +972,22 @@ public void OnRedeemResponse(HTTPResponse response, any serial, const char[] err
 	{
 		strcopy(reason, sizeof(reason), "rejected");
 	}
-	if (IsApiFailureReason(reason))
+	bool apiDown = data.HasKey("api_down") && !data.IsNull("api_down") && data.GetBool("api_down");
+
+	if (apiDown || IsApiFailureReason(reason))
 	{
-		HandleApiDown(client, reason);
+		if (!late)
+		{
+			HandleApiDown(client, reason, true);
+		}
 	}
 	else
 	{
-		BreakerSuccess(); /* the agent answered — transport is healthy */
+		BreakerSuccess(); /* the agent answered - transport is healthy */
+		if (late)
+		{
+			LogMessage("%s client %d (%N): late agent verdict after watchdog: %s", CG_TAG, client, client, reason);
+		}
 		HandleBadTicket(client, reason);
 	}
 }
@@ -811,7 +1012,7 @@ void ConnectDb()
 	}
 	if (!SQL_CheckConfig("chogan"))
 	{
-		LogError("%s databases.cfg has no \"chogan\" section — SQL transport unavailable", TAG);
+		LogError("%s databases.cfg has no \"chogan\" section - SQL transport unavailable", CG_TAG);
 		return;
 	}
 	g_bDbConnecting = true;
@@ -823,19 +1024,19 @@ public void OnDbConnect(Database db, const char[] error, any data)
 	g_bDbConnecting = false;
 	if (db == null)
 	{
-		LogError("%s database connect failed: %s (retry in 30s)", TAG, error);
+		LogError("%s database connect failed: %s (retry in 30s)", CG_TAG, error);
 		CreateTimer(30.0, Timer_DbRetry);
 		return;
 	}
 	delete g_hDb;
 	g_hDb = db;
 	g_hDb.SetCharset("utf8mb4");
-	LogMessage("%s database \"chogan\" connected (SQL transport ready)", TAG);
+	LogMessage("%s database \"chogan\" connected (SQL transport ready)", CG_TAG);
 }
 
 public Action Timer_DbRetry(Handle timer)
 {
-	if (g_hDb == null && (g_Transport == Transport_Sql))
+	if (g_hDb == null && g_Transport == CgTransport_Sql)
 	{
 		ConnectDb();
 	}
@@ -847,20 +1048,20 @@ void SendRedeemSql(int client, const char[] ticket)
 	if (g_hDb == null)
 	{
 		ConnectDb();
-		HandleApiDown(client, "sql_not_connected");
+		HandleApiDown(client, "sql_not_connected", true);
 		return;
 	}
 
 	char ip[48], authid[64], name[MAX_NAME_LENGTH];
 	GetIdentity(client, ip, sizeof(ip), authid, sizeof(authid), name, sizeof(name));
 
-	/* Database.Format escapes every %s (SM 1.10+), so this is injection-safe. */
+	/* Database.Format escapes every %s argument (SM 1.10+), so this is injection-safe. */
 	char query[1400];
 	g_hDb.Format(query, sizeof(query),
 		"INSERT INTO cg_auth_requests (ticket, server_id, ip, authid, name, created_at) VALUES ('%s', '%s', '%s', '%s', '%s', NOW())",
 		ticket, g_sServerId, ip, authid, name);
 	g_hDb.Query(OnSqlInsert, query, GetClientSerial(client));
-	Debug("client %d: SQL request row inserting", client);
+	DbgLog("client %d: SQL request row inserting", client);
 }
 
 public void OnSqlInsert(Database db, DBResultSet results, const char[] error, any serial)
@@ -872,8 +1073,8 @@ public void OnSqlInsert(Database db, DBResultSet results, const char[] error, an
 	}
 	if (results == null)
 	{
-		LogError("%s SQL insert failed: %s", TAG, error);
-		HandleApiDown(client, "sql_insert_failed");
+		LogError("%s SQL insert failed: %s", CG_TAG, error);
+		HandleApiDown(client, "sql_insert_failed", true);
 		return;
 	}
 	g_iSqlRowId[client] = results.InsertId;
@@ -881,7 +1082,7 @@ public void OnSqlInsert(Database db, DBResultSet results, const char[] error, an
 	g_iSqlPollErrors[client] = 0;
 	delete g_hPollTimer[client];
 	g_hPollTimer[client] = CreateTimer(0.5, Timer_SqlPoll, serial, TIMER_REPEAT);
-	Debug("client %d: SQL request row id=%d, polling", client, g_iSqlRowId[client]);
+	DbgLog("client %d: SQL request row id=%d, polling every 0.5s", client, g_iSqlRowId[client]);
 }
 
 public Action Timer_SqlPoll(Handle timer, any serial)
@@ -889,7 +1090,7 @@ public Action Timer_SqlPoll(Handle timer, any serial)
 	int client = GetClientFromSerial(serial);
 	if (client <= 0)
 	{
-		return Plugin_Stop;
+		return Plugin_Stop; /* ResetClient already dropped our handle */
 	}
 	if (g_State[client] != ChoganAuth_Pending)
 	{
@@ -899,7 +1100,8 @@ public Action Timer_SqlPoll(Handle timer, any serial)
 	if (GetEngineTime() - g_fRedeemStart[client] > g_cvTimeout.FloatValue)
 	{
 		g_hPollTimer[client] = null;
-		HandleApiDown(client, "sql_timeout");
+		g_bLateVerdict[client] = true;
+		HandleApiDown(client, "sql_timeout", true);
 		return Plugin_Stop;
 	}
 	if (g_bSqlInFlight[client] || g_hDb == null)
@@ -910,7 +1112,7 @@ public Action Timer_SqlPoll(Handle timer, any serial)
 
 	char query[256];
 	FormatEx(query, sizeof(query),
-		"SELECT verdict, account_id, display_name, reason FROM cg_auth_requests WHERE id = %d AND verdict IS NOT NULL",
+		"SELECT verdict, account_id, display_name, reason, api_down FROM cg_auth_requests WHERE id = %d AND verdict IS NOT NULL",
 		g_iSqlRowId[client]);
 	g_hDb.Query(OnSqlPoll, query, serial);
 	return Plugin_Continue;
@@ -924,59 +1126,112 @@ public void OnSqlPoll(Database db, DBResultSet results, const char[] error, any 
 		return;
 	}
 	g_bSqlInFlight[client] = false;
-	if (g_State[client] != ChoganAuth_Pending)
+
+	bool late = (g_State[client] != ChoganAuth_Pending);
+	if (late && !(g_State[client] == ChoganAuth_Guest && g_bLateVerdict[client]))
 	{
 		return;
 	}
 	if (results == null)
 	{
 		g_iSqlPollErrors[client]++;
-		LogError("%s SQL poll failed (%d): %s", TAG, g_iSqlPollErrors[client], error);
-		if (g_iSqlPollErrors[client] >= 3)
+		LogError("%s SQL poll failed (%d): %s", CG_TAG, g_iSqlPollErrors[client], error);
+		if (!late && g_iSqlPollErrors[client] >= 3)
 		{
 			delete g_hPollTimer[client];
-			HandleApiDown(client, "sql_poll_failed");
+			HandleApiDown(client, "sql_poll_failed", true);
 		}
 		return;
 	}
 	if (!results.FetchRow())
 	{
-		return; /* no verdict yet — keep polling */
+		return; /* no verdict yet - keep polling */
 	}
 
 	delete g_hPollTimer[client];
 
 	char verdict[16], dname[CHOGAN_MAX_DISPLAYNAME], reason[32];
 	results.FetchString(0, verdict, sizeof(verdict));
-	int accountId = results.IsFieldNull(1) ? 0 : results.FetchInt(1);
-	if (results.IsFieldNull(2)) dname[0] = '\0'; else results.FetchString(2, dname, sizeof(dname));
-	if (results.IsFieldNull(3)) reason[0] = '\0'; else results.FetchString(3, reason, sizeof(reason));
+	int accountId = 0;
+	if (!results.IsFieldNull(1))
+	{
+		accountId = results.FetchInt(1);
+	}
+	dname[0] = '\0';
+	if (!results.IsFieldNull(2))
+	{
+		results.FetchString(2, dname, sizeof(dname));
+	}
+	reason[0] = '\0';
+	if (!results.IsFieldNull(3))
+	{
+		results.FetchString(3, reason, sizeof(reason));
+	}
+	bool apiDown = false;
+	if (!results.IsFieldNull(4))
+	{
+		apiDown = (results.FetchInt(4) != 0);
+	}
 
 	if (StrEqual(verdict, "ok", false) && accountId > 0)
 	{
 		BreakerSuccess();
-		BindClient(client, accountId, dname, reason[0] ? reason : "ok");
+		char why[32];
+		if (StrEqual(reason, "cache", false) || StrContains(reason, "cache", false) != -1)
+		{
+			strcopy(why, sizeof(why), "ok_agent_cache");
+		}
+		else
+		{
+			strcopy(why, sizeof(why), "ok");
+		}
+		BindClient(client, accountId, dname, why);
 	}
-	else if (StrEqual(verdict, "reject", false))
+	else if (StrEqual(verdict, "ok", false))
 	{
-		BreakerSuccess();
-		HandleBadTicket(client, reason[0] ? reason : "rejected");
+		if (!late)
+		{
+			HandleApiDown(client, "ok_without_account_id", true);
+		}
+	}
+	else if (reason[0] == '\0')
+	{
+		if (!late)
+		{
+			HandleApiDown(client, "sql_verdict_without_reason", true);
+		}
+	}
+	else if (apiDown || IsApiFailureReason(reason))
+	{
+		if (!late)
+		{
+			HandleApiDown(client, reason, true);
+		}
 	}
 	else
 	{
-		HandleApiDown(client, reason[0] ? reason : "sql_error_verdict");
+		BreakerSuccess();
+		HandleBadTicket(client, reason);
 	}
 }
 
 /* ============================================================================ */
 /* decisions                                                                     */
 
-void HandleApiDown(int client, const char[] why)
+/**
+ * Agent unreachable / no verdict. `transportFailure` feeds the circuit breaker; the
+ * synthetic cases (breaker already open, no transport configured, no server id) do not,
+ * otherwise the breaker would never half-open while clients keep connecting.
+ */
+void HandleApiDown(int client, const char[] why, bool transportFailure)
 {
 	g_iStatApiDown++;
-	BreakerFailure();
-	LogMessage("%s client %d (%N): agent unavailable (%s) after %.2fs — mode=%d",
-		TAG, client, client, why, GetEngineTime() - g_fRedeemStart[client], g_cvMode.IntValue);
+	if (transportFailure)
+	{
+		BreakerFailure();
+	}
+	LogMessage("%s client %d (%N): agent unavailable (%s) after %.2fs - mode=%d",
+		CG_TAG, client, client, why, GetEngineTime() - g_fRedeemStart[client], g_cvMode.IntValue);
 
 	int accountId;
 	char dname[CHOGAN_MAX_DISPLAYNAME];
@@ -989,7 +1244,11 @@ void HandleApiDown(int client, const char[] why)
 
 	char reason[48];
 	FormatEx(reason, sizeof(reason), "api_down:%s", why);
-	if (g_cvMode.IntValue >= 2)
+	if (g_bLateLoadClient[client])
+	{
+		SetGuest(client, reason, "lateload");
+	}
+	else if (g_cvMode.IntValue >= 2)
 	{
 		KickForAuth(client, reason);
 	}
@@ -1002,7 +1261,7 @@ void HandleApiDown(int client, const char[] why)
 void HandleBadTicket(int client, const char[] reason)
 {
 	g_iStatRejected++;
-	LogMessage("%s client %d (%N): ticket rejected (%s) [%s…]", TAG, client, client, reason, g_sTicketHint[client]);
+	LogMessage("%s client %d (%N): ticket rejected (%s) [%s...]", CG_TAG, client, client, reason, g_sTicketHint[client]);
 
 	/* a used ticket on a manual reconnect is the classic innocent case */
 	int accountId;
@@ -1014,7 +1273,11 @@ void HandleBadTicket(int client, const char[] reason)
 		return;
 	}
 
-	if (g_cvInvalidGuest.BoolValue)
+	if (g_bLateLoadClient[client])
+	{
+		SetGuest(client, reason, "lateload");
+	}
+	else if (g_cvInvalidGuest.BoolValue)
 	{
 		SetGuest(client, reason, g_sSource[client]);
 	}
@@ -1031,16 +1294,24 @@ void BindClient(int client, int accountId, const char[] displayName, const char[
 	delete g_hGraceTimer[client];
 
 	g_State[client] = ChoganAuth_Bound;
+	g_bLateVerdict[client] = false;
 	g_iAccountId[client] = accountId;
 	strcopy(g_sDisplayName[client], sizeof(g_sDisplayName[]), displayName);
 	strcopy(g_sReason[client], sizeof(g_sReason[]), reason);
 
-	if (StrContains(reason, "cache") != -1) g_iStatRedeemCached++; else g_iStatRedeemOk++;
+	if (StrContains(reason, "cache") != -1)
+	{
+		g_iStatRedeemCached++;
+	}
+	else
+	{
+		g_iStatRedeemOk++;
+	}
 
 	CacheStore(client, accountId, displayName);
 
 	LogMessage("%s client %d (%N): BOUND account_id=%d display=\"%s\" source=%s (%s) in %.2fs",
-		TAG, client, client, accountId, displayName, g_sSource[client], reason,
+		CG_TAG, client, client, accountId, displayName, g_sSource[client], reason,
 		GetEngineTime() - g_fRedeemStart[client]);
 
 	Call_StartForward(g_fwdBound);
@@ -1068,7 +1339,7 @@ void SetGuest(int client, const char[] reason, const char[] source)
 	strcopy(g_sReason[client], sizeof(g_sReason[]), reason);
 	g_iStatGuests++;
 
-	LogMessage("%s client %d (%N): GUEST (%s)", TAG, client, client, reason);
+	LogMessage("%s client %d (%N): GUEST (%s)", CG_TAG, client, client, reason);
 	FireResolved(client, ChoganAuth_Guest, reason);
 }
 
@@ -1079,23 +1350,48 @@ void KickForAuth(int client, const char[] reason)
 	delete g_hGraceTimer[client];
 
 	g_State[client] = ChoganAuth_Rejected;
+	g_bLateVerdict[client] = false;
 	g_iAccountId[client] = 0;
 	strcopy(g_sReason[client], sizeof(g_sReason[]), reason);
 	g_iStatKicks++;
 
-	char msg[192];
-	g_cvKickMsg.GetString(msg, sizeof(msg));
-
-	LogMessage("%s client %d (%N): KICK (%s)", TAG, client, client, reason);
+	LogMessage("%s client %d (%N): KICK (%s)", CG_TAG, client, client, reason);
 	FireResolved(client, ChoganAuth_Rejected, reason);
 
-	if (IsClientConnected(client) && !IsClientInKickQueue(client))
+	if (g_iSyncDepth > 0)
 	{
-		/* KickClient() is queued by SourceMod and executed on the next game frame
-		 * (core: gamehelpers->AddDelayedKick), so it is safe from a connect forward,
-		 * a timer, an HTTP or an SQL callback alike. No RequestFrame needed. */
-		KickClient(client, "%s (%s)", msg, reason);
+		/* inside OnClientConnected / OnClientSettingsChanged / ... / a client command:
+		 * leave the forward first, kick on the next frame */
+		RequestFrame(Frame_Kick, GetClientSerial(client));
 	}
+	else
+	{
+		/* timer / HTTP / SQL callback: KickClient() itself is queued by SourceMod to
+		 * the next game frame (core: AddDelayedKick), so this is safe here */
+		DoKick(client);
+	}
+}
+
+public void Frame_Kick(any serial)
+{
+	int client = GetClientFromSerial(serial);
+	if (client > 0 && g_State[client] == ChoganAuth_Rejected)
+	{
+		DoKick(client);
+	}
+}
+
+void DoKick(int client)
+{
+	if (!IsClientConnected(client) || IsClientInKickQueue(client))
+	{
+		return;
+	}
+	char msg[192];
+	g_cvKickMsg.GetString(msg, sizeof(msg));
+	char full[256];
+	FormatEx(full, sizeof(full), "%s (%s)", msg, g_sReason[client]);
+	KickClient(client, "%s", full);
 }
 
 void FireResolved(int client, ChoganAuthState state, const char[] reason)
@@ -1110,7 +1406,7 @@ void FireResolved(int client, ChoganAuthState state, const char[] reason)
 /* ============================================================================ */
 /* events (fire and forget)                                                      */
 
-void PostEvent(int client, const char[] event)
+void PostEvent(int client, const char[] type)
 {
 	if (!g_cvEvents.BoolValue || g_iAccountId[client] <= 0)
 	{
@@ -1120,30 +1416,46 @@ void PostEvent(int client, const char[] event)
 	GetIdentity(client, ip, sizeof(ip), authid, sizeof(authid), name, sizeof(name));
 	GetCurrentMap(map, sizeof(map));
 
-	if (g_Transport == Transport_RipExt && g_bRipExt)
+	if (g_Transport == CgTransport_RipExt && g_bRipExt)
 	{
 		char url[512];
 		BuildUrl(url, sizeof(url), "/v1/event");
+
+		JSONObject payload = new JSONObject();
+		payload.SetString("authid", authid);
+		payload.SetString("ip", ip);
+		payload.SetString("name", name);
+		payload.SetString("map", map);
+		payload.SetInt("userid", GetClientUserId(client));
+		payload.SetString("source", g_sSource[client]);
+
 		JSONObject body = new JSONObject();
 		body.SetString("server_id", g_sServerId);
-		body.SetString("event", event);
 		body.SetInt("account_id", g_iAccountId[client]);
-		body.SetString("authid", authid);
-		body.SetString("ip", ip);
-		body.SetString("name", name);
-		body.SetString("map", map);
+		body.SetString("type", type);
+		body.Set("payload", payload);
+
 		HTTPRequest req = new HTTPRequest(url);
 		req.ConnectTimeout = 2;
 		req.Timeout = 5;
 		req.Post(body, OnEventResponse, 0);
+		delete payload;
 		delete body;
 	}
-	else if (g_Transport == Transport_Sql && g_hDb != null)
+	else if (g_Transport == CgTransport_Sql && g_hDb != null)
 	{
+		char eName[MAX_NAME_LENGTH * 2], eMap[128];
+		JsonEscape(name, eName, sizeof(eName));
+		JsonEscape(map, eMap, sizeof(eMap));
+		char payload[512];
+		FormatEx(payload, sizeof(payload),
+			"{\"authid\":\"%s\",\"ip\":\"%s\",\"name\":\"%s\",\"map\":\"%s\",\"userid\":%d,\"source\":\"%s\"}",
+			authid, ip, eName, eMap, GetClientUserId(client), g_sSource[client]);
+
 		char query[1024];
 		g_hDb.Format(query, sizeof(query),
-			"INSERT INTO cg_events (server_id, event, account_id, authid, ip, name, map, created_at) VALUES ('%s', '%s', %d, '%s', '%s', '%s', '%s', NOW())",
-			g_sServerId, event, g_iAccountId[client], authid, ip, name, map);
+			"INSERT INTO cg_events (server_id, account_id, type, payload, created_at) VALUES ('%s', %d, '%s', '%s', NOW())",
+			g_sServerId, g_iAccountId[client], type, payload);
 		g_hDb.Query(OnSqlFireAndForget, query, 0, DBPrio_Low);
 	}
 }
@@ -1152,7 +1464,7 @@ public void OnEventResponse(HTTPResponse response, any value, const char[] error
 {
 	if (error[0] != '\0')
 	{
-		Debug("event post failed: %s", error);
+		DbgLog("event post failed: %s", error);
 	}
 }
 
@@ -1160,8 +1472,47 @@ public void OnSqlFireAndForget(Database db, DBResultSet results, const char[] er
 {
 	if (results == null)
 	{
-		Debug("event insert failed: %s", error);
+		DbgLog("event insert failed: %s", error);
 	}
+}
+
+/** Minimal JSON string escaping (quotes, backslashes, control chars). */
+void JsonEscape(const char[] in, char[] out, int maxlen)
+{
+	int o = 0;
+	for (int i = 0; in[i] != '\0' && o < maxlen - 7; i++)
+	{
+		char c = in[i];
+		if (c == '"' || c == '\\')
+		{
+			out[o++] = '\\';
+			out[o++] = c;
+		}
+		else if (c == '\n')
+		{
+			out[o++] = '\\';
+			out[o++] = 'n';
+		}
+		else if (c == '\r')
+		{
+			out[o++] = '\\';
+			out[o++] = 'r';
+		}
+		else if (c == '\t')
+		{
+			out[o++] = '\\';
+			out[o++] = 't';
+		}
+		else if (c < 0x20)
+		{
+			o += FormatEx(out[o], maxlen - o, "\\u%04x", c);
+		}
+		else
+		{
+			out[o++] = c;
+		}
+	}
+	out[o] = '\0';
 }
 
 /* ============================================================================ */
@@ -1190,12 +1541,12 @@ void CacheStore(int client, int accountId, const char[] displayName)
 	g_hCacheAcct.SetArray(key, val, sizeof(val));
 	g_hCacheName.SetString(key, displayName);
 
-	/* also store under the ip-only key: at reconnect time the auth id is usually not
+	/* also store under the ip-only key: at reconnect time the auth id may not be
 	 * known yet, so the lookup key would be "<ip>|" */
-	char ipOnly[128];
 	char ip[48];
 	if (GetClientIP(client, ip, sizeof(ip)))
 	{
+		char ipOnly[128];
 		FormatEx(ipOnly, sizeof(ipOnly), "%s|", ip);
 		if (!StrEqual(ipOnly, key))
 		{
@@ -1207,6 +1558,8 @@ void CacheStore(int client, int accountId, const char[] displayName)
 
 bool CacheLookup(int client, int &accountId, char[] displayName, int maxlen)
 {
+	accountId = 0;
+	displayName[0] = '\0';
 	if (g_cvCacheTtl.IntValue <= 0)
 	{
 		return false;
@@ -1265,6 +1618,8 @@ bool BreakerIsOpen()
 	{
 		return false;
 	}
+	/* once the open window elapsed the breaker is half-open: the next redeem is a
+	 * trial request; a failure re-opens it immediately (counter is still >= threshold) */
 	return GetEngineTime() < g_fBreakerOpenUntil;
 }
 
@@ -1278,25 +1633,22 @@ void BreakerFailure()
 	g_iBreakerFails++;
 	if (g_iBreakerFails >= threshold)
 	{
-		bool wasOpen = BreakerIsOpen();
+		bool wasOpen = (GetEngineTime() < g_fBreakerOpenUntil);
 		g_fBreakerOpenUntil = GetEngineTime() + g_cvBreakerOpen.FloatValue;
 		if (!wasOpen)
 		{
 			g_iBreakerTrips++;
-			LogMessage("%s circuit breaker OPEN for %.0fs after %d consecutive failures — agent will not be called, fallback path applies immediately",
-				TAG, g_cvBreakerOpen.FloatValue, g_iBreakerFails);
+			LogMessage("%s circuit breaker OPEN for %.0fs after %d consecutive failures - agent will not be called, fallback path applies immediately",
+				CG_TAG, g_cvBreakerOpen.FloatValue, g_iBreakerFails);
 		}
 	}
 }
 
 void BreakerSuccess()
 {
-	if (g_iBreakerFails > 0 || g_fBreakerOpenUntil > 0.0)
+	if (g_cvBreakerFails.IntValue > 0 && g_iBreakerFails >= g_cvBreakerFails.IntValue)
 	{
-		if (g_iBreakerFails >= g_cvBreakerFails.IntValue && g_cvBreakerFails.IntValue > 0)
-		{
-			LogMessage("%s circuit breaker CLOSED (agent answered)", TAG);
-		}
+		LogMessage("%s circuit breaker CLOSED (agent answered)", CG_TAG);
 	}
 	g_iBreakerFails = 0;
 	g_fBreakerOpenUntil = 0.0;
@@ -1309,12 +1661,12 @@ public Action Cmd_Status(int client, int args)
 {
 	char tname[16];
 	TransportNameCopy(g_Transport, tname, sizeof(tname));
-	ReplyToCommand(client, "%s v%s mode=%d transport=%s ripext=%d db=%s server_id=\"%s\" breaker=%s(fails=%d trips=%d) cache=%d entries",
-		TAG, PLUGIN_VERSION, g_cvMode.IntValue, tname, g_bRipExt, (g_hDb != null) ? "connected" : "no",
+	ReplyToCommand(client, "%s v%s mode=%d transport=%s ripext=%d db=%s server_id=\"%s\" breaker=%s (fails=%d trips=%d) cache=%d entries",
+		CG_TAG, PLUGIN_VERSION, g_cvMode.IntValue, tname, g_bRipExt, (g_hDb != null) ? "connected" : "no",
 		g_sServerId, BreakerIsOpen() ? "OPEN" : "closed", g_iBreakerFails, g_iBreakerTrips, g_hCacheAcct.Size);
 	ReplyToCommand(client, "%s totals: ok=%d ok_cache=%d rejected=%d api_down=%d guests=%d kicks=%d",
-		TAG, g_iStatRedeemOk, g_iStatRedeemCached, g_iStatRejected, g_iStatApiDown, g_iStatGuests, g_iStatKicks);
-	ReplyToCommand(client, "  #userid  name                              state     account  display           source    reason");
+		CG_TAG, g_iStatRedeemOk, g_iStatRedeemCached, g_iStatRejected, g_iStatApiDown, g_iStatGuests, g_iStatKicks);
+	ReplyToCommand(client, "  #userid  name                              state     account  display           source    guest reason");
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -1322,11 +1674,12 @@ public Action Cmd_Status(int client, int args)
 		{
 			continue;
 		}
-		char name[MAX_NAME_LENGTH];
+		char name[MAX_NAME_LENGTH], st[12];
 		GetClientName(i, name, sizeof(name));
-		ReplyToCommand(client, "  #%-7d %-33s %-9s %-8d %-17s %-9s %s",
-			GetClientUserId(i), name, StateName(g_State[i]), g_iAccountId[i],
-			g_sDisplayName[i], g_sSource[i], g_sReason[i]);
+		StateNameCopy(g_State[i], st, sizeof(st));
+		ReplyToCommand(client, "  #%-7d %-33s %-9s %-8d %-17s %-9s %-5d %s",
+			GetClientUserId(i), name, st, g_iAccountId[i],
+			g_sDisplayName[i], g_sSource[i], (g_State[i] == ChoganAuth_Guest) ? 1 : 0, g_sReason[i]);
 	}
 	return Plugin_Handled;
 }
@@ -1335,7 +1688,7 @@ public Action Cmd_Health(int client, int args)
 {
 	if (!g_bRipExt)
 	{
-		ReplyToCommand(client, "%s RIPExt not loaded — cannot GET /health (SQL transport db=%s)", TAG, (g_hDb != null) ? "connected" : "no");
+		ReplyToCommand(client, "%s RIPExt not loaded - cannot GET /health (SQL transport db=%s)", CG_TAG, (g_hDb != null) ? "connected" : "no");
 		return Plugin_Handled;
 	}
 	char url[512];
@@ -1344,21 +1697,31 @@ public Action Cmd_Health(int client, int args)
 	req.ConnectTimeout = 2;
 	req.Timeout = 5;
 	req.Get(OnHealthResponse, (client > 0) ? GetClientSerial(client) : 0);
-	ReplyToCommand(client, "%s GET %s dispatched…", TAG, url);
+	ReplyToCommand(client, "%s GET %s dispatched...", CG_TAG, url);
 	return Plugin_Handled;
 }
 
 public void OnHealthResponse(HTTPResponse response, any serial, const char[] error)
 {
 	int status = view_as<int>(response.Status);
-	char line[256];
+	char line[512];
 	if (error[0] != '\0' || status == 0)
 	{
-		FormatEx(line, sizeof(line), "%s /health FAILED: %s", TAG, error);
+		FormatEx(line, sizeof(line), "%s /health FAILED: %s", CG_TAG, error);
 	}
 	else
 	{
-		FormatEx(line, sizeof(line), "%s /health -> HTTP %d", TAG, status);
+		char ctype[96], body[320];
+		body[0] = '\0';
+		if (response.GetHeader("Content-Type", ctype, sizeof(ctype)) && StrContains(ctype, "json", false) != -1)
+		{
+			JSON data = response.Data;
+			if (data != null)
+			{
+				data.ToString(body, sizeof(body), JSON_COMPACT);
+			}
+		}
+		FormatEx(line, sizeof(line), "%s /health -> HTTP %d %s", CG_TAG, status, body);
 	}
 	LogMessage("%s", line);
 	int client = (serial != 0) ? GetClientFromSerial(serial) : 0;
@@ -1370,6 +1733,15 @@ public void OnHealthResponse(HTTPResponse response, any serial, const char[] err
 	{
 		PrintToServer("%s", line);
 	}
+}
+
+public Action Cmd_FlushCache(int client, int args)
+{
+	int n = g_hCacheAcct.Size;
+	g_hCacheAcct.Clear();
+	g_hCacheName.Clear();
+	ReplyToCommand(client, "%s reconnect cache flushed (%d entries)", CG_TAG, n);
+	return Plugin_Handled;
 }
 
 /* ============================================================================ */
@@ -1433,25 +1805,21 @@ public int Native_GetServerId(Handle plugin, int numParams)
 /* ============================================================================ */
 /* helpers                                                                       */
 
-char g_sStateNameBuf[12];
-char[] StateName(ChoganAuthState s)
+void StateNameCopy(ChoganAuthState s, char[] buf, int maxlen)
 {
 	switch (s)
 	{
-		case ChoganAuth_Skipped:  strcopy(g_sStateNameBuf, sizeof(g_sStateNameBuf), "skipped");
-		case ChoganAuth_Waiting:  strcopy(g_sStateNameBuf, sizeof(g_sStateNameBuf), "waiting");
-		case ChoganAuth_Pending:  strcopy(g_sStateNameBuf, sizeof(g_sStateNameBuf), "pending");
-		case ChoganAuth_Bound:    strcopy(g_sStateNameBuf, sizeof(g_sStateNameBuf), "bound");
-		case ChoganAuth_Guest:    strcopy(g_sStateNameBuf, sizeof(g_sStateNameBuf), "guest");
-		case ChoganAuth_Rejected: strcopy(g_sStateNameBuf, sizeof(g_sStateNameBuf), "rejected");
-		default:                  strcopy(g_sStateNameBuf, sizeof(g_sStateNameBuf), "none");
+		case ChoganAuth_Skipped:  strcopy(buf, maxlen, "skipped");
+		case ChoganAuth_Waiting:  strcopy(buf, maxlen, "waiting");
+		case ChoganAuth_Pending:  strcopy(buf, maxlen, "pending");
+		case ChoganAuth_Bound:    strcopy(buf, maxlen, "bound");
+		case ChoganAuth_Guest:    strcopy(buf, maxlen, "guest");
+		case ChoganAuth_Rejected: strcopy(buf, maxlen, "rejected");
+		default:                  strcopy(buf, maxlen, "none");
 	}
-	char out[12];
-	strcopy(out, sizeof(out), g_sStateNameBuf);
-	return out;
 }
 
-void Debug(const char[] fmt, any ...)
+void DbgLog(const char[] fmt, any ...)
 {
 	if (!g_cvDebug.BoolValue)
 	{
@@ -1459,5 +1827,5 @@ void Debug(const char[] fmt, any ...)
 	}
 	char buf[512];
 	VFormat(buf, sizeof(buf), fmt, 2);
-	LogMessage("%s [debug] %s", TAG, buf);
+	LogMessage("%s [debug] %s", CG_TAG, buf);
 }

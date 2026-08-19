@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# install-plugin-instance <instance> <file.smx> [file.smx ...] — put compiled plugins into ONE instance's overlay
+# (addons/sourcemod/plugins/) and (re)load them via RCON. For development/probing; production plugins go into the base.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+n="$1"; shift
+for f in "$@"; do
+  b="$(basename "$f")"
+  ./scripts/rput "$f" "/opt/css/instances/$n/root/cstrike/addons/sourcemod/plugins/$b" 0644 "css-$n:css" < /dev/null
+  ./scripts/rroot "/opt/css/bin/css-rcon $n 'sm plugins load $b' 2>&1 | head -3; /opt/css/bin/css-rcon $n 'sm plugins reload ${b%.smx}' 2>&1 | head -2" < /dev/null
+done

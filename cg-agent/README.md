@@ -83,13 +83,14 @@ Response, always `200`:
 | `cache_hit` | bool | always present. `true` = served from the agent's cache |
 | `api_down` | bool | always present. `true` = the backend could not be reached for this request (the verdict, if any, came from the cache) |
 
-How the plugin applies its cvar policy (MISSION §6.3, `cg_auth_mode`):
+Suggested mapping to the plugin's cvar policy (MISSION §6.3, `cg_auth_mode`; the policy
+itself lives in the plugin, the agent only reports facts):
 
 | agent answer | mode 0 off | mode 1 soft (default) | mode 2 hard |
 |---|---|---|---|
 | `ok:true` (any source) | bind | bind | bind |
-| `ok:false, reason != api_down` (`invalid/expired/used/scope`) | ignore | kick (bad ticket is bad in every mode) | kick |
-| `ok:false, reason = api_down` / agent unreachable | ignore | **let in as guest** | kick |
+| `ok:false, reason != api_down` (`invalid/expired/used/scope`, or any unknown reason passed through from the API) | ignore | kick (a definitive "no" from the backend; the plugin may choose guest during rollout) | kick |
+| `ok:false, reason = api_down` / agent unreachable / non-200 | ignore | **let in as guest** | kick |
 
 (`ok:true, source:"cache", api_down:true` is the "fall back to cache" case of both mode 1
 and mode 2 — the agent already did the fallback; the plugin just binds.)

@@ -1,0 +1,16 @@
+# Pinned CS:S v92 SourceMod gamedata — provenance (see docs/gamedata-trap.md)
+# Source commit: alliedmodders/sourcemod fc4d88f7dbd002324a0676c8a489a3b2c627af7a (1.12-dev, parent of the
+# v93 gamedata commit e6e470058d900c771c0e57f33d4ec1917c5ab7ed; its own parent is 8f921d971da1cacd00c0f709bea1c31f746b6aea
+# = SourceMod build 1.12.0-git7179, and gamedata/ is tree-identical between 8f921d97, fc4d88f7 and master 2382453d = 5d468dd2^).
+# Columns: sha256 of the file as stored here (LF)  |  upstream git blob id  |  path
+#
+# NOTE core.games/engine.css.txt is stored upstream with CRLF line endings (blob 2c92e9a4d5eef358d53a833518ed87203efef772,
+# sha256 f3fa427e79d9ff92ce21618c621df106136894a8dc386c1632b6f07b3981236e, 1014 bytes). This repo forces LF for *.txt
+# (.gitattributes), so the copy here is the CRLF->LF normalisation of that blob (961 bytes, blob 78d560f014fd8fde2b290f9ed2ed00ab63a3051b).
+# It is otherwise byte-identical; SourceMod's SMC text parser treats \r as whitespace. The other four files are byte-exact
+# (same blob id as upstream).
+92047c95d3c5a2a9870fbc5b1eedd57434626c6c847c3703e5116a021844f0b6  2c92e9a4d5eef358d53a833518ed87203efef772(upstream,CRLF)  core.games/engine.css.txt
+696fd2f68536057dedb79c9aa14e600fac67fe0b7bd7c5c078347e4964a5d664  59b46942c18b1e54c490439f70c83d72ea870267  sdkhooks.games/game.cstrike.txt
+a3900440d80166309998feb461fbc9de831695b3f7b246885c53befd45cc5500  e2c4c5c163c097e0e5285673e8f80317f83aec69  sdktools.games/engine.css.txt
+28be93b84100d4453afa1df4f8f05f021bf51f6c3f7f0a97e8df1b794ecb6125  923d16d74cdb50fda3983f9ece33139abd8de794  sdktools.games/game.cstrike.txt
+c2fc125180cc1714c9ff6e9d9df5d631930fdf232f02c005054029106beb9e2b  773ec1f37efc7e23ed289d404c30c358e81961a3  sm-cstrike.games/game.css.txt

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# build-plugins [file.sp ...] — compile SourcePawn plugins from plugins/scripting/ on the VM with the pinned SM 1.12
+# spcomp (same compiler the server runs). Output .smx land in /opt/css/build/out on the VM and are fetched back
+# into plugins/compiled/ locally. Exit non-zero if any compile fails.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+HOST="${CSS_HOST:-212.80.8.87}"; USER_="${CSS_USER:-cssource}"; KEY="${CSS_KEY:-$HOME/.ssh/chogan_css}"
+SSH="ssh -i $KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new $USER_@$HOST"
+SCP="scp -q -i $KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+files=("$@"); [ ${#files[@]} -gt 0 ] || files=(plugins/scripting/*.sp)
+$SSH "mkdir -p ~/.build/src/include ~/.build/out"
+$SCP plugins/scripting/include/*.inc "$USER_@$HOST:~/.build/src/include/" 2>/dev/null || true
+for f in "${files[@]}"; do $SCP "$f" "$USER_@$HOST:~/.build/src/"; done
+rc=0; mkdir -p plugins/compiled
+for f in "${files[@]}"; do
+  b="$(basename "$f" .sp)"
+  echo "=== spcomp $b.sp"
+  if $SSH "cd ~/.build/src && /opt/css/base/cstrike/addons/sourcemod/scripting/spcomp $b.sp -i/opt/css/base/cstrike/addons/sourcemod/scripting/include -iinclude -o ../out/$b.smx 2>&1 | grep -vE '^(Code size|Data size|Stack/heap size|Total requirements)' | sed 's/^/  /'; test -s ../out/$b.smx"; then
+    $SCP "$USER_@$HOST:~/.build/out/$b.smx" plugins/compiled/; echo "  -> plugins/compiled/$b.smx ($(stat -c %s plugins/compiled/$b.smx 2>/dev/null || wc -c < plugins/compiled/$b.smx) bytes)"
+  else echo "  FAILED: $b"; rc=1; fi
+done
+exit $rc
