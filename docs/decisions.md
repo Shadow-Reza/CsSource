@@ -39,3 +39,17 @@ Chronological. Each entry says what, why, and the alternative rejected.
 - Base is `cssbase:css`, dirs 2775, files `u+rw,g+rw,o+r` (+x preserved). The SM 7179
   tarball ships files as 0600, which made `sourcemod.vdf` unreadable for the instance
   user → "No plugins loaded". `css-base-fixperms` now normalises read bits too.
+
+## D-007 (2026-08-19) systemd mount-namespace wedge — base must never change under live overlays
+- **Symptom seen:** after installing files into `/opt/css/base` **while four instances' overlays were still
+  mounted**, every `css@` unit failed at `226/NAMESPACE`: `Failed to set up mount namespacing:
+  /run/systemd/unit-root/dev: Invalid argument`. A trivial `systemd-run -p PrivateDevices=yes /bin/true` also
+  failed, i.e. the host mount-namespace state was wedged, not the unit.
+- **Fix:** `systemctl reboot` (a `daemon-reexec` alone did NOT clear it). After reboot every enabled unit
+  auto-started cleanly and a normal stop-all/start-all cycle is stable (`docs/evidence/19-reboot-resilience.txt`).
+- **Rule (already enforced by the provision scripts):** any change to the shared base MUST stop **all** `css@`
+  and `css-overlay@` units first (the overlay lowerdir must not change while mounted). `css-base-fixperms`
+  refuses if any overlay is mounted. Never `install` into `/opt/css/base` with instances running.
+- `PrivateDevices` is not in the MISSION §6.1 list; it was kept because it works in normal operation, but if
+  this ever recurs on a box that can't be rebooted, dropping `PrivateDevices=yes` from `css@.service` is the
+  mitigation.
