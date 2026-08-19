@@ -17,4 +17,4 @@ exec ./srcds_run -game cstrike -console \
   -ip "$CSS_IP" -port "$CSS_PORT" +clientport "$CSS_CLIENTPORT" -steamport "$CSS_STEAMPORT" +tv_port "$CSS_TVPORT" \
   -tickrate "$CSS_TICKRATE" -maxplayers "$CSS_MAXPLAYERS" +map "$CSS_MAP" \
   -norestart -strictportbind -nobreakpad -insecure -noupdate \
-  +hostname_instance "$n" $CSS_EXTRA_ARGS
+  $CSS_EXTRA_ARGS

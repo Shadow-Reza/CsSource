@@ -8,5 +8,5 @@ if grep -qs "lowerdir=$BASE" /proc/mounts; then
 fi
 chown -R cssbase:css "$BASE"
 find "$BASE" -type d -exec chmod 2775 {} +
-find "$BASE" -type f -exec chmod g+w {} +
+find "$BASE" -type f -exec chmod u+rw,g+rw,o+r {} +
 echo "css-base-fixperms: done ($(find "$BASE" -type f | wc -l) files)"

@@ -3,8 +3,9 @@
 # Files under server/opt/css/bin get 0755. Units get 0644 and systemd is reloaded.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-if grep -rlI $'' server scripts plugins cg-agent 2>/dev/null | grep -v '\.md$' | head -1 | grep -q .; then
-  echo "deploy-server-tree: CRLF line endings found in:"; grep -rlI $'' server scripts plugins cg-agent | grep -v '\.md$'; exit 1
+CR=$(printf '\r')
+if grep -rlI "$CR" server 2>/dev/null | head -1 | grep -q .; then
+  echo "deploy-server-tree: CRLF line endings found in:"; grep -rlI "$CR" server; exit 1
 fi
 find server -type f ! -path 'server/provision/*' | while read -r f; do
   rel="${f#server}"; mode=0644

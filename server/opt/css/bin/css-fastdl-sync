@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# css-fastdl-sync — mirror custom content from /opt/css/content/cstrike into /srv/fastdl/cstrike as .bz2
+# (maps always bz2; small files copied as-is AND bz2 so either client path works). Idempotent, incremental.
+set -euo pipefail
+SRC=/opt/css/content/cstrike; DST=/srv/fastdl/cstrike
+mkdir -p "$DST"
+find "$SRC" -type f \( -path '*/maps/*' -o -path '*/materials/*' -o -path '*/models/*' -o -path '*/sound/*' -o -path '*/resource/*' -o -path '*/particles/*' -o -path '*/scripts/*' \) -print0 |
+while IFS= read -r -d '' f; do
+  rel="${f#$SRC/}"; out="$DST/$rel"; mkdir -p "$(dirname "$out")"
+  if [ ! -s "$out.bz2" ] || [ "$f" -nt "$out.bz2" ]; then bzip2 -kc -9 "$f" > "$out.bz2.tmp" && mv "$out.bz2.tmp" "$out.bz2"; echo "bz2: $rel"; fi
+  case "$rel" in maps/*) ;; *) if [ ! -s "$out" ] || [ "$f" -nt "$out" ]; then cp -p "$f" "$out"; fi;; esac
+done
+chown -R root:www-data "$DST"; find "$DST" -type d -exec chmod 755 {} +; find "$DST" -type f -exec chmod 644 {} +
+echo "css-fastdl-sync: $(find "$DST" -type f | wc -l) files, $(du -sh "$DST" | cut -f1)"

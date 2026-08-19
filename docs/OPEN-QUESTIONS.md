@@ -23,3 +23,8 @@ Each entry: what I found, what I decided, why, and what I would want confirmed.
   account, its password, or sshd was changed.
 - **Would confirm:** whether a NOPASSWD sudoers entry for a dedicated deploy user is
   acceptable for future automation.
+
+## OQ-3 — SourceMod build pin (see D-005)
+- **Decided:** SM 1.12.0-git7179 forever (until someone builds SM against the v92 SDK).
+- **Would confirm:** whether the operator prefers SM 1.11 (last 1.11 builds also predate
+  v93) — I chose 1.12 because the spec and all chosen plugins target 1.12.

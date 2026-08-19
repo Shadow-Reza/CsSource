@@ -1,0 +1,38 @@
+# Chogan CS:S FastDL (MISSION §6.2). Shares the single IP with the game traffic, so limit_rate is mandatory.
+# Serves /srv/fastdl/cstrike/{maps,materials,models,sound,resource,particles}/... — bzip2'd where possible.
+limit_conn_zone $binary_remote_addr zone=fastdl_conn:10m;
+limit_req_zone  $binary_remote_addr zone=fastdl_req:10m rate=10r/s;
+
+server {
+    listen 212.80.8.87:80 default_server;
+    server_name _;
+    root /srv/fastdl;
+    access_log /var/log/nginx/fastdl.access.log;
+    error_log  /var/log/nginx/fastdl.error.log warn;
+    autoindex off;
+    server_tokens off;
+    sendfile on;
+    tcp_nopush on;
+    keepalive_timeout 15;
+    client_max_body_size 1k;
+
+    # per-connection throttle (~1.5 MB/s) after the first 512k, few parallel connections per client
+    limit_rate_after 512k;
+    limit_rate 1500k;
+    limit_conn fastdl_conn 4;
+    limit_req  zone=fastdl_req burst=20 nodelay;
+
+    location = / { return 204; }
+    location = /health { return 200 "ok\n"; add_header Content-Type text/plain; access_log off; }
+
+    # only game content, only GET/HEAD, only known extensions
+    location ~ ^/cstrike/(maps|materials|models|sound|resource|particles|scripts)/.+\.(bsp|bz2|vmt|vtf|mdl|vtx|vvd|phy|wav|mp3|txt|pcf|res|nav|ain|ztmp)$ {
+        limit_except GET HEAD { deny all; }
+        types { application/octet-stream bsp bz2 vmt vtf mdl vtx vvd phy pcf res nav ain ztmp; audio/wav wav; audio/mpeg mp3; text/plain txt; }
+        default_type application/octet-stream;
+        expires 7d;
+        add_header Cache-Control "public";
+        try_files $uri =404;
+    }
+    location / { return 404; }
+}
