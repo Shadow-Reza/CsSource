@@ -1,0 +1,5 @@
+== wallhack ON (stress variant) ==
+CPU with wallhack: 122% of one core; FPS: 49.41
+== wallhack OFF ==
+CPU without wallhack: 134% of one core; FPS: 66.59
+restored
