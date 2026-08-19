@@ -3,7 +3,9 @@ secrets/
 *.key
 *.pem
 *.env
+!cg-agent/deploy/*.example.*
 .env*
 node_modules/
 __pycache__/
 *.pyc
+cg-agent/bin/

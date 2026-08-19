@@ -1476,29 +1476,29 @@ public void OnSqlFireAndForget(Database db, DBResultSet results, const char[] er
 	}
 }
 
-/** Minimal JSON string escaping (quotes, backslashes, control chars). */
+/** Minimal JSON string escaping (quotes, backslashes, control chars). UTF-8 bytes pass through. */
 void JsonEscape(const char[] in, char[] out, int maxlen)
 {
 	int o = 0;
-	for (int i = 0; in[i] != '\0' && o < maxlen - 7; i++)
+	for (int i = 0; in[i] != '\0' && o < maxlen - 8; i++)
 	{
-		char c = in[i];
-		if (c == '"' || c == '\\')
+		int c = in[i] & 0xFF;
+		if (c == 0x22 || c == 0x5C)          /* double quote or backslash */
 		{
 			out[o++] = '\\';
-			out[o++] = c;
+			out[o++] = in[i];
 		}
-		else if (c == '\n')
+		else if (c == 0x0A)
 		{
 			out[o++] = '\\';
 			out[o++] = 'n';
 		}
-		else if (c == '\r')
+		else if (c == 0x0D)
 		{
 			out[o++] = '\\';
 			out[o++] = 'r';
 		}
-		else if (c == '\t')
+		else if (c == 0x09)
 		{
 			out[o++] = '\\';
 			out[o++] = 't';
@@ -1509,7 +1509,7 @@ void JsonEscape(const char[] in, char[] out, int maxlen)
 		}
 		else
 		{
-			out[o++] = c;
+			out[o++] = in[i];
 		}
 	}
 	out[o] = '\0';
