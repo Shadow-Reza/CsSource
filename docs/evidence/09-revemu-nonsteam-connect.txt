@@ -1,0 +1,22 @@
+# RevEmu install + non-Steam connect attempts (2026-08-19)
+# RevEmu binary: 08.10.2023 bir3yk Linux server build
+#   sha256 ca1e6cc779ae73f342318955a8e670cce7dbb50a4ece177aa60f79e318857d52
+#   provenance: hl2go.com mirror zip == Uphardt/RevEmu-2024-Uphardt-Edition-LINUX (identical bytes)
+# Valve original preserved as bin/steamclient_valve.so (sha256 649d786b…, 29,505,411 bytes from buildid 6953255)
+
+## RevEmu loaded (rev-client.log)
+2026/08/19 09:45:37 	Startup
+2026/08/19 09:45:37 	Using ClientDll "bin/steamclient_valve.so"
+2026/08/19 09:46:23 	Ticket: Unknown.
+2026/08/19 09:46:23 	UserConnect IP = 212.80.8.87 | SteamID = STEAM_0:1:1781007403 (16)
+
+## connect attempts from scripts/srcclient (sv_lan 0)
+# dummy steamid64+pad ticket, several lengths, and the legacy rev2013 194-byte layout:
+S2C_CONNREJECT '9' reason='#GameUI_ServerRejectSteam'   (all)
+# server console:
+S3: Client connected with invalid ticket: UserID: c
+# CONCLUSION: RevEmu classifies our synthetic ticket as "Unknown" and the engine's BeginAuthSession
+# rejects it. A bir3yk-recognised ticket cannot be forged without the real (Themida-packed) client
+# or backend (docs/revemu.md §4c). Full non-Steam GAME-client validation needs the launcher's client.
+# The Chogan phone-account auth (setinfo lt) is proven separately in evidence 06/07/08 and does not
+# depend on the RevEmu SteamID.

@@ -630,6 +630,26 @@ def parse_challenge_reply(data):
     return res
 
 
+def build_rev2013_ticket(steamid64):
+    """Legacy RevEmu-2013 194-byte ticket layout (docs/revemu.md 4b, from kohtep/MultiEmulator RevEmu2013.h).
+    The engine's NotifyClientConnect only reads the leading uint64 SteamID; RevEmu itself parses the rest, whose
+    crypto blocks are HWID-derived. We cannot mint a bir3yk-recognised ticket, so the AES/SHA regions are random:
+    this only tests whether the server ADMITS a ticket of this shape (needs RevEmu_2012=True). SteamID must be
+    individual/universe-1 or the engine rejects it before RevEmu sees it."""
+    import os, struct as _s, time as _t
+    steamid64 = (steamid64 & 0xFFFFFFFF) | (0x01100001 << 32)  # force universe 1 / individual / instance 1
+    revhash = (steamid64 >> 1) & 0xFFFFFFFF
+    now = int(_t.time()) & 0xFFFFFFFF
+    t = bytearray(194)
+    def wi(off, v): t[off:off+4] = _s.pack('<I', v & 0xFFFFFFFF)
+    wi(0, ord('S')); wi(4, revhash); wi(8, 0x00766572)  # 'rev' little-endian; wi(12, 0)
+    wi(16, (revhash << 1) & 0xFFFFFFFF); wi(20, 0x01100001); wi(24, (now + 90123) & 0xFFFFFFFF)
+    t[27] = (~(t[27] + t[24])) & 0xFF
+    wi(28, (~now) & 0xFFFFFFFF); wi(32, (revhash * 2 >> 3) & 0xFFFFFFFF); wi(36, 0)
+    t[40:72] = os.urandom(32); t[72:104] = os.urandom(32); t[104:136] = os.urandom(32)
+    # engine wants steamID64 prepended (it strips 8 bytes before handing the rest to RevEmu)
+    return _s.pack('<Q', steamid64) + bytes(t)
+
 def build_connect(authproto, challenge, client_challenge, name, password, version,
                   cdkey='', ticket=b'', ticket_as_string=False):
     """C2S_CONNECT 'k' (baseclientstate.cpp SendConnectPacket ~495)."""
@@ -1772,6 +1792,8 @@ class SrcClient(object):
                 ticket = b''
             elif a.ticket == 'dummy':
                 ticket = struct.pack('<Q', a.steamid64) + bytes(a.ticket_pad)
+            elif a.ticket == 'rev2013':
+                ticket = build_rev2013_ticket(a.steamid64)
             else:
                 ticket = binascii.unhexlify(a.ticket)
         pkt = build_connect(authproto, chal['challenge'], self.client_challenge, a.name, a.password,
@@ -2156,7 +2178,7 @@ def main():
     ap.add_argument('--rcon-cmd', default='status')
     ap.add_argument('--authproto', default='auto', help="auto (echo server's S2C_CHALLENGE value), 2 (HASHEDCDKEY) or 3 (STEAM)")
     ap.add_argument('--cdkey', default=hashlib.md5(b'srcclient').hexdigest(), help='32-hex cdkey hash for authproto 2')
-    ap.add_argument('--ticket', default='dummy', help="steam ticket for authproto 3: 'dummy' (steamid64+pad), 'none' (empty), or hex bytes")
+    ap.add_argument('--ticket', default='dummy', help="steam ticket for authproto 3: 'dummy' (steamid64+pad), 'none' (empty), 'rev2013' (legacy RevEmu-2013 194-byte layout, needs RevEmu_2012=True on the server), or hex bytes")
     ap.add_argument('--ticket-pad', type=int, default=16, help='zero bytes appended after steamid64 in the dummy ticket')
     ap.add_argument('--ticket-as-string', action='store_true', help='send the STEAM ticket as a NUL-terminated string instead of short-len+bytes')
     ap.add_argument('--steamid64', type=int, default=0x0110000100000000 | 12345678, help='fake SteamID64 prepended to the dummy ticket')

@@ -48,3 +48,31 @@ Each entry: what I found, what I decided, why, and what I would want confirmed.
   record sha256, and keep the Valve `steamclient.so` from buildid 6953255 as `steamclient_valve.so`.
 - **Would confirm:** operator supplies the RevEmu build they ship to players (server and client side must
   agree on the ticket format); whether `AllowLegit` (Steam players) should stay on.
+
+## OQ-6 — Non-Steam transport: RevEmu installed but a game-client connect could not be validated
+- **Found:** RevEmu (08.10.2023 bir3yk Linux build, sha256 `ca1e6cc7…`, provenance
+  cross-checked: hl2go mirror == Uphardt GitHub, identical bytes) is installed in the
+  base and loads correctly — `rev-client.log`: `Startup` / `Using ClientDll
+  "bin/steamclient_valve.so"` / `UserConnect IP=… SteamID=STEAM_0:1:1781007403`. But a
+  connect attempt from `scripts/srcclient` with a forged/legacy (`rev2013`, 194-byte)
+  ticket is rejected: RevEmu logs `Ticket: Unknown` and the engine's own
+  `BeginAuthSession` returns `invalid ticket` → `#GameUI_ServerRejectSteam`. This
+  matches `docs/revemu.md` §4c: the current RevEmu ticket is minted client-side by
+  bir3yk's Themida-packed client from the HDD serial and (optionally) verified against
+  bir3yk's backend — it is **not reproducible by a synthetic client**. So a *full
+  non-Steam game-client connection* can only be proven with the actual launcher client.
+- **Decided:** keep RevEmu installed (the spec's explicit choice) with a sane rev.ini
+  (`Check_Ticket=False`, `AllowUnknown=True`, `RevEmu_2012=False`, `ClientDLL=./bin/
+  steamclient_valve.so`); leave the servers on `sv_lan 0`. The **Chogan phone-account
+  auth (setinfo `lt`) is fully proven and is independent of the RevEmu SteamID** — that
+  is the identity system MISSION §3 asks for; RevEmu only governs whether a non-Steam
+  *game client* can establish the connection at all.
+- **Strongly recommend / would confirm:** evaluate **`srcdslab/sm-ext-connect` 1.4.1**
+  with `sv_nosteam` as the non-Steam transport instead of RevEmu. It is a SourceMod
+  extension that hooks `BeginAuthSession` and lets a plugin accept clients with **no
+  backend and no proprietary client**, so it can be tested end-to-end with `srcclient`
+  (a plain dummy ticket). Caveats: the published binary is built for ubuntu-24.04 /
+  sm-1.12-dev, so it must be verified to load on this box (22.04) + pinned SM 7179, or
+  rebuilt. This is an architecture choice the operator should make; I did not swap it in
+  because RevEmu is what the spec names and the launcher's client emulator must match
+  whatever the server runs — that pairing is the operator's integration point.
