@@ -511,7 +511,9 @@ void StartAnnounceTimer()
 	float t = g_cvAnnounce.FloatValue;
 	if (t >= 1.0)
 	{
-		g_hAnnounceTimer = CreateTimer(t, Timer_Announce, _, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+		/* No TIMER_FLAG_NO_MAPCHANGE: this repeat timer survives map changes so its stored
+		   handle stays valid; it is deleted and recreated each map in OnConfigsExecuted. */
+		g_hAnnounceTimer = CreateTimer(t, Timer_Announce, _, TIMER_REPEAT);
 	}
 }
 

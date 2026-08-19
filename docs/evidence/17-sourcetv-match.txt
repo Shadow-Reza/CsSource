@@ -1,2 +1,12 @@
+# SourceTV on match servers (MISSION 6.6/6.7)
 == m1 ==
+Online 00:54, FPS 66.7, Version 6630498 (Linux)
+Master "Chogan TV", delay 90
+Local IP 212.80.8.87:27035, KB/sec In 0.0, Out 0.0
+Recording to "auto-20260819-1023-de_inferno.dem", length 00:53.
 == m2 ==
+Online 01:51, FPS 67.0, Version 6630498 (Linux)
+Master "Chogan TV", delay 90
+Local IP 212.80.8.87:27036, KB/sec In 0.0, Out 0.0
+# autorecord writes a .dem on each map change; janitor caps DEMO_MAX_MB=3000/instance, KEEP=14d
+test demos cleaned
