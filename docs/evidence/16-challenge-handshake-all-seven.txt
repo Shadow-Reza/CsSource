@@ -1,0 +1,7 @@
+[27017] S2C_CHALLENGE 'A': magic=0x5a4f4933 (OK) challenge=0xfc0d0275
+[27018] S2C_CHALLENGE 'A': magic=0x5a4f4933 (OK) challenge=0x2ca9bcce
+[27019] S2C_CHALLENGE 'A': magic=0x5a4f4933 (OK) challenge=0xaddd438f
+[27025] S2C_CHALLENGE 'A': magic=0x5a4f4933 (OK) challenge=0x8e03aac3
+[27026] S2C_CHALLENGE 'A': magic=0x5a4f4933 (OK) challenge=0x6c708759
+[27015] S2C_CHALLENGE 'A': magic=0x5a4f4933 (OK) challenge=0x37eba473
+[27016] S2C_CHALLENGE 'A': magic=0x5a4f4933 (OK) challenge=0xfe8d32a7
