@@ -245,14 +245,17 @@ public void OnResponse(HTTPResponse response, any tag, const char[] error)
 		strcopy(how, sizeof(how), "content-length");
 	}
 
-	char verdict[16];
+	/* For probe 2 the question is "did the async TLS/HTTP round trip complete" — any
+	 * HTTP status > 0 answers yes. A 4xx (e.g. GitHub 403 rate limit) is therefore
+	 * still a transport PASS, just flagged. */
+	char verdict[24];
 	if (status >= 200 && status < 400)
 	{
 		strcopy(verdict, sizeof(verdict), "OK");
 	}
 	else
 	{
-		strcopy(verdict, sizeof(verdict), "HTTP-ERROR");
+		strcopy(verdict, sizeof(verdict), "OK-TRANSPORT/HTTP-ERR");
 	}
 
 	PLog("RESULT url=%s verdict=%s status=%d elapsed=%.3fs content-type=%s content-length=%s body_len=%d (%s) server=%s preview=%s",
