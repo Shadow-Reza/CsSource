@@ -259,10 +259,10 @@ float CvFloat(ConVar cv, float dflt)
 /**
  * Appends the list of policy violations to `out`. Returns the number of violations.
  */
-int CheckPolicy(RateSnap snap, char[] out, int maxlen)
+int CheckPolicy(RateSnap snap, char[] dest, int maxlen)
 {
 	int n = 0;
-	out[0] = '\0';
+	dest[0] = '\0';
 
 	int minRate = CvInt(g_cvMinRate, 0);
 	int maxRate = CvInt(g_cvMaxRate, 0);
@@ -278,12 +278,12 @@ int CheckPolicy(RateSnap snap, char[] out, int maxlen)
 		if (minRate > 0 && snap.rate < minRate)
 		{
 			n++;
-			Format(out, maxlen, "%srate %d < sv_minrate %d; ", out, snap.rate, minRate);
+			Format(dest, maxlen, "%srate %d < sv_minrate %d; ", dest, snap.rate, minRate);
 		}
 		if (maxRate > 0 && snap.rate > maxRate)
 		{
 			n++;
-			Format(out, maxlen, "%srate %d > sv_maxrate %d; ", out, snap.rate, maxRate);
+			Format(dest, maxlen, "%srate %d > sv_maxrate %d; ", dest, snap.rate, maxRate);
 		}
 	}
 	if (snap.haveUpd)
@@ -291,12 +291,12 @@ int CheckPolicy(RateSnap snap, char[] out, int maxlen)
 		if (minUpd > 0 && snap.upd < minUpd)
 		{
 			n++;
-			Format(out, maxlen, "%scl_updaterate %d < sv_minupdaterate %d; ", out, snap.upd, minUpd);
+			Format(dest, maxlen, "%scl_updaterate %d < sv_minupdaterate %d; ", dest, snap.upd, minUpd);
 		}
 		if (maxUpd > 0 && snap.upd > maxUpd)
 		{
 			n++;
-			Format(out, maxlen, "%scl_updaterate %d > sv_maxupdaterate %d; ", out, snap.upd, maxUpd);
+			Format(dest, maxlen, "%scl_updaterate %d > sv_maxupdaterate %d; ", dest, snap.upd, maxUpd);
 		}
 	}
 	if (snap.haveCmd)
@@ -304,12 +304,12 @@ int CheckPolicy(RateSnap snap, char[] out, int maxlen)
 		if (minCmd > 0 && snap.cmd < minCmd)
 		{
 			n++;
-			Format(out, maxlen, "%scl_cmdrate %d < sv_mincmdrate %d; ", out, snap.cmd, minCmd);
+			Format(dest, maxlen, "%scl_cmdrate %d < sv_mincmdrate %d; ", dest, snap.cmd, minCmd);
 		}
 		if (maxCmd > 0 && snap.cmd > maxCmd)
 		{
 			n++;
-			Format(out, maxlen, "%scl_cmdrate %d > sv_maxcmdrate %d; ", out, snap.cmd, maxCmd);
+			Format(dest, maxlen, "%scl_cmdrate %d > sv_maxcmdrate %d; ", dest, snap.cmd, maxCmd);
 		}
 	}
 	if (snap.haveRatio)
@@ -317,12 +317,12 @@ int CheckPolicy(RateSnap snap, char[] out, int maxlen)
 		if (minRatio >= 0.0 && snap.ratio < minRatio)
 		{
 			n++;
-			Format(out, maxlen, "%scl_interp_ratio %.2f < sv_client_min_interp_ratio %.2f; ", out, snap.ratio, minRatio);
+			Format(dest, maxlen, "%scl_interp_ratio %.2f < sv_client_min_interp_ratio %.2f; ", dest, snap.ratio, minRatio);
 		}
 		if (maxRatio >= 0.0 && snap.ratio > maxRatio)
 		{
 			n++;
-			Format(out, maxlen, "%scl_interp_ratio %.2f > sv_client_max_interp_ratio %.2f; ", out, snap.ratio, maxRatio);
+			Format(dest, maxlen, "%scl_interp_ratio %.2f > sv_client_max_interp_ratio %.2f; ", dest, snap.ratio, maxRatio);
 		}
 	}
 	return n;
@@ -333,35 +333,35 @@ int CheckPolicy(RateSnap snap, char[] out, int maxlen)
  * cl_updaterate / cl_cmdrate with the measured packet rates when the claim is above
  * the server cap. Only a hint — packet rates also drop with choke and low tickrate.
  */
-void ClampNote(RateSnap snap, char[] out, int maxlen)
+void ClampNote(RateSnap snap, char[] dest, int maxlen)
 {
-	out[0] = '\0';
+	dest[0] = '\0';
 	int maxUpd = CvInt(g_cvMaxUpd, 0);
 	int maxCmd = CvInt(g_cvMaxCmd, 0);
 	if (snap.haveUpd && maxUpd > 0 && snap.upd > maxUpd && snap.outPps > 0.0)
 	{
 		if (snap.outPps <= float(maxUpd) * 1.10)
 		{
-			Format(out, maxlen, "%supdaterate claim %d > cap %d but measured %.0f pkt/s out => engine clamps; ",
-				out, snap.upd, maxUpd, snap.outPps);
+			Format(dest, maxlen, "%supdaterate claim %d > cap %d but measured %.0f pkt/s out => engine clamps; ",
+				dest, snap.upd, maxUpd, snap.outPps);
 		}
 		else
 		{
-			Format(out, maxlen, "%supdaterate claim %d > cap %d and measured %.0f pkt/s out => NOT clamped; ",
-				out, snap.upd, maxUpd, snap.outPps);
+			Format(dest, maxlen, "%supdaterate claim %d > cap %d and measured %.0f pkt/s out => NOT clamped; ",
+				dest, snap.upd, maxUpd, snap.outPps);
 		}
 	}
 	if (snap.haveCmd && maxCmd > 0 && snap.cmd > maxCmd && snap.inPps > 0.0)
 	{
 		if (snap.inPps <= float(maxCmd) * 1.10)
 		{
-			Format(out, maxlen, "%scmdrate claim %d > cap %d but measured %.0f pkt/s in => engine clamps; ",
-				out, snap.cmd, maxCmd, snap.inPps);
+			Format(dest, maxlen, "%scmdrate claim %d > cap %d but measured %.0f pkt/s in => engine clamps; ",
+				dest, snap.cmd, maxCmd, snap.inPps);
 		}
 		else
 		{
-			Format(out, maxlen, "%scmdrate claim %d > cap %d and measured %.0f pkt/s in => NOT clamped (client sends more); ",
-				out, snap.cmd, maxCmd, snap.inPps);
+			Format(dest, maxlen, "%scmdrate claim %d > cap %d and measured %.0f pkt/s in => NOT clamped (client sends more); ",
+				dest, snap.cmd, maxCmd, snap.inPps);
 		}
 	}
 }

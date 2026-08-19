@@ -23,6 +23,11 @@ first; a compile error there is a one-line fix, not a design problem.
 
 ## 1. Compile (on the VM)
 
+Shortcut from the workstation: `scripts/build-plugins [plugins/scripting/x.sp ...]` copies the
+sources + `include/` to the VM, runs the pinned `spcomp` there with
+`-i<sm>/scripting/include -iinclude`, and fetches the `.smx` back into `plugins/compiled/`.
+Manual equivalent:
+
 SourceMod is pinned to `sourcemod-1.12.0-git7179-linux.tar.gz` (docs/decisions.md D-005); the
 tarball ships the compiler at `addons/sourcemod/scripting/spcomp` (32-bit) and `spcomp64`.
 RIPExt 1.3.2's zip ships its includes into the same `scripting/include/` (provision script

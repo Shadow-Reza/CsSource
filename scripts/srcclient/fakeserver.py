@@ -42,12 +42,15 @@ def main():
     clients = {}   # addr -> dict(chan, state, spawncount)
     spawncount = 7
     challenge_for = lambda addr: (hash(addr[0]) ^ 0x5a5a5a5a) & 0x7FFFFFFF
+    next_keepalive = time.time() + 1.0
     while True:
-        rl, _, _ = select.select([s], [], [], 1.0)
-        if not rl:
+        rl, _, _ = select.select([s], [], [], max(0.0, next_keepalive - time.time()))
+        if time.time() >= next_keepalive:
             # periodic transmit like the engine's 1 s signon keepalive
             for addr, c in list(clients.items()):
                 c['chan'].transmit()
+            next_keepalive = time.time() + 1.0
+        if not rl:
             continue
         data, addr = s.recvfrom(65536)
         hdr = struct.unpack_from('<i', data)[0]

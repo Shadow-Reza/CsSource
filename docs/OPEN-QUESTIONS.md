@@ -28,3 +28,23 @@ Each entry: what I found, what I decided, why, and what I would want confirmed.
 - **Decided:** SM 1.12.0-git7179 forever (until someone builds SM against the v92 SDK).
 - **Would confirm:** whether the operator prefers SM 1.11 (last 1.11 builds also predate
   v93) — I chose 1.12 because the spec and all chosen plugins target 1.12.
+
+## OQ-4 — No real CS:S client is available to this run
+- **Found:** the operator machine has no Steam/CS:S install; a v92 non-Steam client can only come from
+  community repacks (untrusted downloads, which this run does not perform). The VM cannot run a game client.
+- **Decided:** prove the connect path at protocol level with `scripts/srcclient` (real Source-engine
+  challenge/connect handshake + netchannel from the box itself), plus Valve bots for gameplay load, and
+  flag clearly that the MISSION §6.2 "real client connects and plays" gate was satisfied only at that level.
+- **Would confirm:** operator runs the launcher's v92 client against pub1 (`connect 212.80.8.87:27017`)
+  with `setinfo lt <ticket>` set before connecting and sends me the console output + `sm_cgauth` output.
+
+## OQ-5 — RevEmu provenance
+- **Found:** bir3yk.net (the emulator author's site) is not reachable as a download source; the only
+  GitHub packaging of the bir3yk RevEmu for Linux Source servers found so far is
+  `Uphardt/RevEmu-2024-Uphardt-Edition-LINUX` (bin/steamclient.so 1.7 MB + rev.ini, 2024-02).
+  rev.ini confirms the mechanism (`ClientDLL = ./bin/steamclient_valve.so`, `AllowLegit/AllowCracked/
+  AllowUnknown`, `Check_Ticket`, `UseConectSM`).
+- **Decided (pending research result):** use that package on the VM inside the sandboxed instance user,
+  record sha256, and keep the Valve `steamclient.so` from buildid 6953255 as `steamclient_valve.so`.
+- **Would confirm:** operator supplies the RevEmu build they ship to players (server and client side must
+  agree on the ticket format); whether `AllowLegit` (Steam players) should stay on.

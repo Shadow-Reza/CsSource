@@ -1149,10 +1149,11 @@ class ReceiveList(object):
 
 
 class NetChannel(object):
-    def __init__(self, sock, addr, challenge, handler, side='svc'):
+    def __init__(self, sock, addr, challenge, handler, side='svc', send_challenge=True):
         self.sock = sock
         self.addr = addr
         self.challenge = challenge & 0xFFFFFFFF
+        self.send_challenge = send_challenge   # PACKET_FLAG_CHALLENGE + challenge long in every packet
         self.handler = handler
         self.out_seq = 1
         self.in_seq = 0
@@ -1302,8 +1303,9 @@ class NetChannel(object):
         if self.choked > 0:
             flags |= PACKET_FLAG_CHOKED
             w.write_byte(self.choked & 0xFF)
-        flags |= PACKET_FLAG_CHALLENGE
-        w.write_long(self.challenge)
+        if self.send_challenge:
+            flags |= PACKET_FLAG_CHALLENGE
+            w.write_long(self.challenge)
         if self._send_subchannel_data(w):
             flags |= PACKET_FLAG_RELIABLE
         if datagram is not None and datagram.num_bits() > 0:
@@ -1636,6 +1638,7 @@ class SrcClient(object):
         self.signon = SIGNONSTATE_NONE
         self.spawncount = -1
         self.running = True
+        self.reconnects = 0
         self.userinfo = self.build_userinfo()
 
     # ---- userinfo -----------------------------------------------------------
@@ -1816,7 +1819,7 @@ class SrcClient(object):
         return None   # timeout
 
     # ---- netchannel phase ----------------------------------------------------
-    def send_initial_reliable(self):
+    def send_initial_reliable(self, transmit=True):
         a = self.args
         chan = self.chan
         pairs = self.userinfo
@@ -1827,7 +1830,8 @@ class SrcClient(object):
         chan.queue_reliable(wr)
         log('queued reliable: net_SetConVar(%d convars: %s) + net_SignonState(CONNECTED, -1)' % (
             len(pairs), ', '.join('%s=%s' % (k, (v if len(v) < 24 else v[:21] + '...')) for k, v in pairs)))
-        chan.transmit()
+        if transmit:
+            chan.transmit()
 
     def handle_messages(self, msgs):
         a = self.args
@@ -1864,7 +1868,6 @@ class SrcClient(object):
                     log('>> queued CLC_ClientInfo(server_count=%d sendtable_crc=0x%08x replay_bit=%s) + '
                         'net_SignonState(NEW, %d)  [NOTE: a wrong SendTable CRC makes the server send '
                         '"Server uses different class tables" unless sv_sendtables 1]' % (sc, crc & 0xFFFFFFFF, rb, sc))
-                    chan.transmit()
                 elif st in (SIGNONSTATE_PRESPAWN, SIGNONSTATE_SPAWN) and a.progress >= st:
                     sc = m['spawncount']
 
@@ -1872,7 +1875,15 @@ class SrcClient(object):
                         msg_signonstate(w, st, sc)
                     chan.queue_reliable(wr)
                     log('>> queued net_SignonState(%s, %d)' % (SIGNON_NAMES[st], sc))
-                    chan.transmit()
+                elif st == SIGNONSTATE_CONNECTED:
+                    # CBaseClient::Reconnect(): server cleared its netchannel and wants the
+                    # CONNECTED handshake again (spawncount/state mismatch on our side)
+                    self.reconnects += 1
+                    if self.reconnects <= 3:
+                        log('server requested a reconnect (net_SignonState CONNECTED); re-sending userinfo + CONNECTED ack')
+                        self.send_initial_reliable(transmit=False)
+                    else:
+                        log('server keeps requesting reconnects; giving up re-sending')
                 elif st == SIGNONSTATE_CHANGELEVEL:
                     log('server is changing level; staying put')
             elif mid == svc_ServerInfo:
@@ -1933,7 +1944,8 @@ class SrcClient(object):
 
     def run_netchannel(self):
         a = self.args
-        self.chan = NetChannel(self.sock, self.addr, self.res.challenge, self)
+        self.chan = NetChannel(self.sock, self.addr, self.res.challenge, self,
+                               send_challenge=not a.no_challenge_flag)
         chan = self.chan
         self.signon = SIGNONSTATE_CONNECTED
         self.res.last_signon_state = SIGNONSTATE_CONNECTED
@@ -2164,6 +2176,8 @@ def main():
     ap.add_argument('--server-silence', type=float, default=10.0, help='warn if the server is silent this long')
     ap.add_argument('--bind-port', type=int, default=0, help='local UDP port (0 = ephemeral)')
     ap.add_argument('--no-disconnect', action='store_true', help='do not send net_Disconnect at the end (let the server time out)')
+    ap.add_argument('--no-challenge-flag', action='store_true',
+                    help='omit PACKET_FLAG_CHALLENGE + challenge long from netchannel headers (fallback for engines without it)')
     ap.add_argument('--disconnect-reason', default='srcclient done')
     ap.add_argument('--selftest', action='store_true', help='run offline self tests and exit')
     args = ap.parse_args()
