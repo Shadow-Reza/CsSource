@@ -1,0 +1,1 @@
+A2S_INFO ok rtt=16ms name='Chogan | Public #1 | Classic' map=de_dust2 game=Counter-Strike: Source appid=240 players=10/32 bots=10 vac=0 version=6630498
