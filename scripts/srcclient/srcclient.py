@@ -1627,8 +1627,8 @@ class SrcClient(object):
         self.args = args
         self.res = Result()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if args.bind_port:
-            self.sock.bind(('0.0.0.0', args.bind_port))
+        if args.bind_port or args.bind_addr != '0.0.0.0':
+            self.sock.bind((args.bind_addr, args.bind_port))
         try:
             host_ip = socket.gethostbyname(args.host)
         except socket.error:
@@ -2176,6 +2176,7 @@ def main():
     ap.add_argument('--retries', type=int, default=4)
     ap.add_argument('--server-silence', type=float, default=10.0, help='warn if the server is silent this long')
     ap.add_argument('--bind-port', type=int, default=0, help='local UDP port (0 = ephemeral)')
+    ap.add_argument('--bind-addr', default='0.0.0.0', help="local source address; use 127.0.0.1 on the box so the server sees a loopback client (exempt from sv_lan checks)")
     ap.add_argument('--no-disconnect', action='store_true', help='do not send net_Disconnect at the end (let the server time out)')
     ap.add_argument('--no-challenge-flag', action='store_true',
                     help='omit PACKET_FLAG_CHALLENGE + challenge long from netchannel headers (fallback for engines without it)')

@@ -755,3 +755,13 @@ length-restricted to 259 usable bytes.)
    `"connect0x%08X"` ASCII trailer, in this mirror. (§1a)
 5. This mirror is `PROTOCOL_VERSION 25`; v92 retail is **24** — send 24. (§0)
 6. "A JWT fits" is fragile against the 259-byte value cap. (§6a)
+
+---
+## ERRATUM (2026-08-19, measured on the real v92 server)
+§3's conclusion "GetClientInfo(client,"lt") is empty inside OnClientConnected" is **wrong on the retail
+server**. `probe_setinfo.smx` logged the `lt` value already at `OnClientConnect` (pre) and `OnClientConnected`
+(see `docs/evidence/06-probe1-setinfo-srcclient.txt`). The game-DLL `ClientConnect` call is made from
+`CGameClient::SetSignonState(SIGNONSTATE_CONNECTED)` (i.e. when the server processes the client's
+`net_SignonState(CONNECTED)`), and the client sends that message in the same reliable block *after*
+`net_SetConVar(userinfo)`, so the userinfo is already applied when SourceMod's forwards fire. The packet
+layouts in §1, §2, §4, §6 were confirmed by the working `scripts/srcclient`.
