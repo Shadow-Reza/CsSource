@@ -76,3 +76,8 @@ Each entry: what I found, what I decided, why, and what I would want confirmed.
   rebuilt. This is an architecture choice the operator should make; I did not swap it in
   because RevEmu is what the spec names and the launcher's client emulator must match
   whatever the server runs — that pairing is the operator's integration point.
+- **Tested:** the published `connect.ext.2.css.so` (both the sm-1.12-dev and sm-master
+  ubuntu-24.04 assets) require **GLIBC_2.38**, but jammy ships glibc 2.35, so it will
+  NOT load on this box as-is (`version 'GLIBC_2.38' not found`). Using sm-ext-connect
+  here means rebuilding it from source against SM 1.12 + hl2sdk-css on Ubuntu 22.04
+  (or moving the box to 24.04, see OQ-1). Parked as a follow-up, not a blocker.
