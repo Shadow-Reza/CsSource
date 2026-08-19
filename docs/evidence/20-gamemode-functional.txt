@@ -1,0 +1,31 @@
+== DM: cvars live + bots alive (respawn authority) ==
+[chogan_dm] v0.1.0 - SOLE respawn authority on this server
+  enabled=1  round=live  warmup=no
+  respawn_delay=2.0  health=100  armor=100  money=16000
+  protect=2.0s alpha=160  full_ammo=1  antistuck=1
+  mode=0 (buy DM)
+  players: 6 alive, 0 protected
+alive bots now: 6
+
+== GG: levels assigned, weapons given on spawn ==
+[gungame] ladder: 15 levels. anyweapon=0 knife_steal=1 reset_each_round=0
+  lvl  name                       alive  weapon
+  8    Hank                       yes    m3
+  7    Tony                       yes    p90
+  6    Xavier                     yes    ump45
+  5    Tyler                      yes    mp5navy
+  4    Eric                       yes    galil
+  2    Xander                     yes    ak47
+
+== AWP: weapon restrict policy + AWP given ==
+[chogan_wr] mode=allowlist enabled=1 refill=1
+  allow (2): weapon_awp, weapon_knife
+  block (0): (none)
+  give-on-spawn (2): weapon_awp, weapon_knife
+  violations:
+
+== errors across mode servers ==
+[dm] no chogan errors
+[gg] no chogan errors
+[awp] no chogan errors
+[m1] no chogan errors
