@@ -1,0 +1,7 @@
+[Unit]
+Description=A2S liveness watchdog for CS:S instances
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/css/bin/css-watchdog

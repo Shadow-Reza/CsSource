@@ -105,7 +105,6 @@ func okResponse(a Account, source string, cacheHit, apiDown bool) RedeemResponse
 		DisplayName: a.DisplayName,
 		PhoneMasked: a.PhoneMasked,
 		Source:      source,
-		Guest:       false,
 		CacheHit:    cacheHit,
 		APIDown:     apiDown,
 	}

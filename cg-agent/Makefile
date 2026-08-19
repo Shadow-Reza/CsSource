@@ -1,5 +1,9 @@
-# cg-agent — build a static Linux/amd64 binary.
+# cg-agent - build a static Linux/amd64 binary.
 # Requires Go >= 1.22 on the build host (https://go.dev/dl/). No CGO, no libc.
+#
+#   go mod tidy      # once, needs network (fetches github.com/go-sql-driver/mysql)
+#   make             # -> bin/cg-agent
+#   make test        # unit tests (no DB, no network)
 
 BINARY  := cg-agent
 OUT     := bin/$(BINARY)
@@ -8,7 +12,7 @@ LDFLAGS := -s -w -X main.version=$(VERSION)
 
 .PHONY: build tidy test vet fmt clean check run-stub
 
-build: tidy
+build:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags '$(LDFLAGS)' -o $(OUT) .
 
 tidy:

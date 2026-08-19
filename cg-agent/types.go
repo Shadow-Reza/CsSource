@@ -25,7 +25,7 @@ type Account struct {
 // RedeemResponse is the wire shape returned to the plugin by /v1/redeem and
 // the shape the agent expects back from the Chogan API in remote mode.
 //
-//	ok:true  -> account_id, display_name, phone_masked, source, guest:false
+//	ok:true  -> account_id, display_name, phone_masked, source (api|cache|stub|local)
 //	ok:false -> reason (invalid|expired|used|scope|api_down)
 //
 // cache_hit and api_down are always present so the plugin can apply its
@@ -36,7 +36,6 @@ type RedeemResponse struct {
 	DisplayName string `json:"display_name,omitempty"`
 	PhoneMasked string `json:"phone_masked,omitempty"`
 	Source      string `json:"source,omitempty"`
-	Guest       bool   `json:"guest"`
 	Reason      string `json:"reason,omitempty"`
 	CacheHit    bool   `json:"cache_hit"`
 	APIDown     bool   `json:"api_down"`

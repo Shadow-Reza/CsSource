@@ -102,11 +102,13 @@ func (t *sqlTransport) tick(ctx context.Context) (int, error) {
 	var pending []authRequestRow
 	for rows.Next() {
 		var r authRequestRow
-		if err := rows.Scan(&r.ID, &r.Ticket, &r.ServerID, &r.IP, &r.AuthID, &r.Name); err != nil {
+		var ticket, serverID, ip, authid, name sql.NullString // tolerate NULLs from the plugin
+		if err := rows.Scan(&r.ID, &ticket, &serverID, &ip, &authid, &name); err != nil {
 			rows.Close()
 			cancel()
 			return 0, err
 		}
+		r.Ticket, r.ServerID, r.IP, r.AuthID, r.Name = ticket.String, serverID.String, ip.String, authid.String, name.String
 		pending = append(pending, r)
 	}
 	err = rows.Err()

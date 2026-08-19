@@ -325,7 +325,7 @@ func TestServiceStubAndReconnect(t *testing.T) {
 	req := RedeemRequest{Ticket: "ticket-1", ServerID: "pub1", IP: "1.2.3.4", AuthID: "STEAM_0:1:1", Name: "p"}
 
 	r1 := svc.Redeem(ctx, req)
-	if !r1.OK || r1.Source != SourceStub || r1.AccountID < 1000 || r1.AccountID > 1999 || r1.Guest || r1.CacheHit || r1.APIDown || r1.DisplayName != "Test Player" {
+	if !r1.OK || r1.Source != SourceStub || r1.AccountID < 1000 || r1.AccountID > 1999 || r1.CacheHit || r1.APIDown || r1.DisplayName != "Test Player" {
 		t.Fatalf("first redeem = %+v", r1)
 	}
 	// manual reconnect with the same (already used) ticket from the same authid+ip
@@ -537,8 +537,10 @@ func TestHTTPStubMode(t *testing.T) {
 	if rec.Code != http.StatusOK || out["ok"] != true || out["source"] != "stub" || out["display_name"] != "Test Player" || out["api_down"] != false {
 		t.Fatalf("redeem: %d %s", rec.Code, rec.Body.String())
 	}
-	if _, has := out["guest"]; !has {
-		t.Fatalf("guest must always be present: %s", rec.Body.String())
+	for _, k := range []string{"cache_hit", "api_down"} {
+		if _, has := out[k]; !has {
+			t.Fatalf("%s must always be present: %s", k, rec.Body.String())
+		}
 	}
 	rec, out = do(http.MethodPost, "/v1/redeem", redeemBody)
 	if rec.Code != http.StatusOK || out["ok"] != true || out["source"] != "cache" || out["cache_hit"] != true {

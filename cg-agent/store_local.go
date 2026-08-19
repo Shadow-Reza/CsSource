@@ -108,12 +108,12 @@ func (s *localStore) Redeem(ctx context.Context, req RedeemRequest) (backendResu
 		return backendResult{Reason: ReasonInvalid}, nil
 	case err != nil:
 		return backendResult{}, fmt.Errorf("redeem diagnose: %w", err)
+	case serverID != req.ServerID:
+		return backendResult{Reason: ReasonScope}, nil
 	case usedAt.Valid:
 		return backendResult{Reason: ReasonUsed}, nil
 	case !exp.After(now):
 		return backendResult{Reason: ReasonExpired}, nil
-	case serverID != req.ServerID:
-		return backendResult{Reason: ReasonScope}, nil
 	}
 	return backendResult{Reason: ReasonInvalid}, nil
 }
@@ -155,9 +155,9 @@ func (s *localStore) Send(ctx context.Context, e Event) (bool, error) {
 	return false, nil
 }
 
-// Housekeep purges old tickets (and, when the SQL transport is on, resolved
-// auth requests) so the tables do not grow forever.
-func (s *localStore) Housekeep(ctx context.Context, every time.Duration, sqlTransport bool) {
+// Housekeep purges old tickets (local mode) and resolved auth requests (when
+// the SQL transport is on) so the tables do not grow forever.
+func (s *localStore) Housekeep(ctx context.Context, every time.Duration, purgeTickets, sqlTransport bool) {
 	t := time.NewTicker(every)
 	defer t.Stop()
 	for {
@@ -167,11 +167,13 @@ func (s *localStore) Housekeep(ctx context.Context, every time.Duration, sqlTran
 		case <-t.C:
 		}
 		hctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		if res, err := s.db.ExecContext(hctx,
-			`DELETE FROM tickets WHERE exp < NOW() - INTERVAL 1 DAY LIMIT 5000`); err != nil {
-			s.log.Warn("housekeeping tickets failed", "err", err.Error())
-		} else if n, _ := res.RowsAffected(); n > 0 {
-			s.log.Info("housekeeping", "table", "tickets", "deleted", n)
+		if purgeTickets {
+			if res, err := s.db.ExecContext(hctx,
+				`DELETE FROM tickets WHERE exp < NOW() - INTERVAL 1 DAY LIMIT 5000`); err != nil {
+				s.log.Warn("housekeeping tickets failed", "err", err.Error())
+			} else if n, _ := res.RowsAffected(); n > 0 {
+				s.log.Info("housekeeping", "table", "tickets", "deleted", n)
+			}
 		}
 		if sqlTransport {
 			if res, err := s.db.ExecContext(hctx,

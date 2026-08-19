@@ -1,0 +1,6 @@
+[Unit]
+Description=Cap SourceTV demos and stale logs for CS:S instances
+
+[Service]
+Type=oneshot
+ExecStart=/opt/css/bin/css-janitor
