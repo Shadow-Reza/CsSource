@@ -16,3 +16,8 @@
 | unattended-upgrades | active (Update-Package-Lists=1, Unattended-Upgrade=1) |
 
 Raw survey output is in `docs/evidence/00-survey.txt`.
+
+## Network reachability quirks (2026-08-19)
+- `go.dev` / `dl.google.com` / `golang.google.cn` / `ipinfo.io` return 403/404 from the VM (Google blocks the
+  region). GitHub, Steam CDN, Ubuntu archives, AlliedModders drops all work. Go is installed from Ubuntu's
+  `golang-1.22-go` package instead of the upstream tarball.
