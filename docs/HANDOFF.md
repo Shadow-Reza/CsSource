@@ -11,6 +11,8 @@
 | **سشن‌های بعدیِ Claude Code** — از کجا ادامه بدهند، چه چیزی را نشکنند | بخش ۳ و ۴ |
 | **خودِ من در آینده** | همه — به‌علاوهٔ `docs/decisions.md` و `docs/OPEN-QUESTIONS.md` |
 
+نسخهٔ قابل‌اشتراک (صفحهٔ وب): <https://claude.ai/code/artifact/a11ae7fa-b533-4480-a983-73995e106705>
+
 مخزن: <https://github.com/Shadow-Reza/CsSource> · شاخهٔ کار `build/chogan-css` · [PR #1](https://github.com/Shadow-Reza/CsSource/pull/1) **باز و مرج‌نشده**.
 گزارشِ کاملِ فنی: [`docs/FINAL-REPORT.md`](FINAL-REPORT.md) · راهنمای بهره‌برداری: [`docs/runbook.md`](runbook.md) · شواهدِ خام: [`docs/evidence/`](evidence/) (۲۱ فایل).
 
