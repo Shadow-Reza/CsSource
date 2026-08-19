@@ -1,0 +1,62 @@
+[Unit]
+Description=Counter-Strike: Source v92 server instance %i
+Documentation=https://github.com/Shadow-Reza/CsSource
+After=network-online.target css-overlay@%i.service mariadb.service
+Wants=network-online.target
+BindsTo=css-overlay@%i.service
+Requires=css-overlay@%i.service
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=css-%i
+Group=css
+WorkingDirectory=/opt/css/instances/%i/root
+ExecStart=/opt/css/bin/css-launch %i
+Restart=always
+RestartSec=5
+TimeoutStopSec=25
+KillSignal=SIGINT
+KillMode=control-group
+SuccessExitStatus=0 SIGINT SIGTERM
+LimitNOFILE=65536
+LimitCORE=0
+OOMScoreAdjust=-100
+
+# accounting so each instance can be measured (MISSION §6.1 / probe 4)
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes
+IOAccounting=yes
+
+# sandbox
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=x86 x86-64
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# srcds is 32-bit and SourcePawn JITs: no MemoryDenyWriteExecute, arch must include x86.
+ReadWritePaths=/opt/css/instances/%i/root /opt/css/instances/%i/home
+ReadOnlyPaths=/opt/css/base /opt/css/etc
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=Overlay root for CS:S instance %i (lower=/opt/css/base)
+After=local-fs.target
+ConditionPathIsDirectory=/opt/css/base/cstrike
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/css/bin/css-overlay mount %i
+ExecStop=/opt/css/bin/css-overlay umount %i
+
+[Install]
+WantedBy=multi-user.target

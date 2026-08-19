@@ -1,0 +1,7 @@
+[27017] A2S_INFO ok rtt=16ms name='Chogan | Public #1 | Classic' map=de_dust2 game=Counter-Strike: Source appid=240 players=10/32 bots=10 vac=0 version=6630498
+[27018] A2S_INFO ok rtt=17ms name='Chogan | Public #2 | Classic' map=de_dust2 game=Counter-Strike: Source appid=240 players=10/32 bots=10 vac=0 version=6630498
+[27019] A2S_INFO ok rtt=0ms name='Chogan | DeathMatch' map=de_dust2 game=Counter-Strike: Source appid=240 players=8/24 bots=8 vac=0 version=6630498
+[27025] A2S_INFO ok rtt=45ms name='Chogan | GunGame' map=de_dust2 game=Counter-Strike: Source appid=240 players=8/24 bots=8 vac=0 version=6630498
+[27026] A2S_INFO ok rtt=16ms name='Chogan | AimAwp 100tick' map=de_dust2 game=Counter-Strike: Source appid=240 players=6/20 bots=6 vac=0 version=6630498
+[27015] A2S_INFO ok rtt=0ms name='Chogan | Match #1 | 100tick' map=de_dust2 game=Counter-Strike: Source appid=240 players=0/13 bots=0 vac=0 version=6630498
+[27016] A2S_INFO ok rtt=0ms name='Chogan | Match #2 | 100tick' map=de_dust2 game=Counter-Strike: Source appid=240 players=0/13 bots=0 vac=0 version=6630498

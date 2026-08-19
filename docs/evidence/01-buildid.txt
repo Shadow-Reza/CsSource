@@ -1,0 +1,52 @@
+	"name"		"Counter-Strike: Source Dedicated Server"
+	"StateFlags"		"4"
+	"LastUpdated"		"1787115625"
+	"buildid"		"6953255"
+bin
+cstrike
+hl2
+platform
+srcds_linux
+srcds_run
+steamapps
+thirdpartylegalnotices.txt
+basehaptics.txt
+crashhandler.so
+datacache_srv.so
+dedicated_srv.so
+engine_srv.so
+filesystem_stdio.so
+libprofiler.so.0
+libstdc++.so.6
+libsteam_api.so
+libtcmalloc_minimal.so.4
+libtier0.so
+libtier0_srv.so
+libtier0_s.so
+libvstdlib.so
+libvstdlib_srv.so
+libvstdlib_s.so
+materialsystem_srv.so
+replay_srv.so
+scenefilecache_srv.so
+shaderapiempty_srv.so
+soundemittersystem_srv.so
+steamclient.so
+studiorender_srv.so
+vphysics_srv.so
+vpk_linux32
+PatchVersion=6630498
+ClientVersion=6630498
+ServerVersion=6630498
+ProductName=cstrike
+appID=240
+ServerAppID=232330
+-rwxrwxr-x 1 cssbase cssbase 29505411 Aug 19 05:00 /opt/css/base/bin/steamclient.so
+
+/opt/css/base/cstrike/bin/:
+total 13480
+drwxrwxr-x 2 cssbase cssbase     4096 Aug 19 05:00 .
+drwxrwxr-x 9 cssbase cssbase     4096 Aug 19 05:00 ..
+-rwxrwxr-x 1 cssbase cssbase 13794664 Aug 19 05:00 server_srv.so
+20
+226M	/opt/css/base/cstrike/maps

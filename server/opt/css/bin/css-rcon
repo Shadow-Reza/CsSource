@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""css-rcon <instance|host:port> <command...> — minimal Source RCON client (TCP). Password from
+/opt/css/etc/secrets/<instance>.env (RCON_PASSWORD=...) or $RCON_PASSWORD. Runs on the box (loopback allowed)."""
+import os, re, socket, struct, sys
+def pkt(pid, ptype, body):
+    b = body.encode() + b"\x00\x00"
+    return struct.pack("<iii", len(b) + 8, pid, ptype) + b
+def read_pkt(s):
+    hdr = b""
+    while len(hdr) < 4:
+        c = s.recv(4 - len(hdr)); 
+        if not c: raise EOFError("closed")
+        hdr += c
+    (ln,) = struct.unpack("<i", hdr); data = b""
+    while len(data) < ln:
+        c = s.recv(ln - len(data))
+        if not c: raise EOFError("closed")
+        data += c
+    pid, ptype = struct.unpack("<ii", data[:8]); return pid, ptype, data[8:-2].decode(errors="replace")
+def main():
+    if len(sys.argv) < 3: print(__doc__); sys.exit(2)
+    target, cmd = sys.argv[1], " ".join(sys.argv[2:])
+    if ":" in target: host, port = target.split(":"); port = int(port); pw = os.environ.get("RCON_PASSWORD", "")
+    else:
+        env = open(f"/opt/css/etc/instances/{target}.env").read()
+        port = int(re.search(r"^CSS_PORT=(\d+)", env, re.M).group(1)); host = re.search(r"^CSS_IP=(\S+)", env, re.M).group(1)
+        pw = re.search(r"^RCON_PASSWORD=(\S+)", open(f"/opt/css/etc/secrets/{target}.env").read(), re.M).group(1)
+    s = socket.create_connection((host, port), timeout=8)
+    s.sendall(pkt(1, 3, pw))
+    # auth reply: an empty SERVERDATA_RESPONSE_VALUE then SERVERDATA_AUTH_RESPONSE with id 1 or -1
+    while True:
+        pid, ptype, body = read_pkt(s)
+        if ptype == 2:
+            if pid == -1: print("rcon: auth failed", file=sys.stderr); sys.exit(1)
+            break
+    s.sendall(pkt(2, 2, cmd)); s.sendall(pkt(3, 0, ""))  # trailing empty request to detect end of multi-packet responses
+    out = []
+    while True:
+        pid, ptype, body = read_pkt(s)
+        if pid == 3: break
+        out.append(body)
+    sys.stdout.write("".join(out)); s.close()
+if __name__ == "__main__": main()

@@ -1,0 +1,72 @@
+[Unit]
+Description=Chogan auth sidecar (cg-agent) for the CS:Source servers
+Documentation=https://github.com/Shadow-Reza/CsSource/blob/build/chogan-css/cg-agent/README.md
+# MariaDB is only needed in mode=local / sql_transport; the agent keeps retrying if it is down.
+After=network-online.target mariadb.service
+Wants=network-online.target
+# never give up restarting (Restart=always + RestartSec=2); rate limiting is off on purpose:
+# the game servers fail open (cvar mode 1) while the agent is down, a stuck "start-limit-hit" would be worse.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=cg-agent
+Group=cg-agent
+# validate the config before (re)starting so a typo shows up in `systemctl status`, not in a restart loop
+ExecStartPre=/usr/local/bin/cg-agent -check -config /etc/cg-agent/config.toml
+ExecStart=/usr/local/bin/cg-agent -config /etc/cg-agent/config.toml
+Restart=always
+RestartSec=2
+# SIGTERM -> graceful: stop listening, finish in-flight redeems, drain the event queue (shutdown_timeout_sec)
+KillSignal=SIGTERM
+KillMode=mixed
+TimeoutStopSec=15
+SuccessExitStatus=0 SIGTERM
+LimitNOFILE=16384
+Environment=GOMAXPROCS=2
+OOMScoreAdjust=-200
+
+# JSON logs on stdout -> journald:  journalctl -u cg-agent -o cat | jq .
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cg-agent
+
+# --- sandbox (MISSION 6.1 style). The agent is a pure network client + HTTP listener on loopback:
+# it needs no writable path at all (ProtectSystem=strict, no ReadWritePaths), and its only files are
+# /etc/cg-agent/config.toml (secrets, 0600 cg-agent:cg-agent) and the binary.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+# static Go binary, no JIT: W^X is fine
+MemoryDenyWriteExecute=yes
+# AF_UNIX: MariaDB unix socket / systemd-resolved; AF_INET/6: loopback listener + HTTPS to the API
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadOnlyPaths=/etc/cg-agent
+UMask=0077
+
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes
+MemoryMax=256M
+TasksMax=256
+
+[Install]
+WantedBy=multi-user.target

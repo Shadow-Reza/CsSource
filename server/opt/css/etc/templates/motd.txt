@@ -1,0 +1,4 @@
+<html><body style="background:#111;color:#ddd;font-family:sans-serif;padding:20px">
+<h2>Chogan — @@HOSTNAME@@</h2>
+<p>Log in through the Chogan launcher. Be nice. No cheats — SMAC/Lilac are watching.</p>
+</body></html>

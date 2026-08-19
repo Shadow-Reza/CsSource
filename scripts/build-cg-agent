@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# build-cg-agent — ship cg-agent/ sources to the VM, build + vet + test there (Go from apt, GOPROXY=direct because
+# Google's proxy/sumdb are unreachable from the box), fetch the binary back into cg-agent/bin/. Exit non-zero on failure.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+HOST="${CSS_HOST:-212.80.8.87}"; USER_="${CSS_USER:-cssource}"; KEY="${CSS_KEY:-$HOME/.ssh/chogan_css}"
+SSH=(ssh -i "$KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$USER_@$HOST")
+tar -C cg-agent --exclude=./bin -cf - . | "${SSH[@]}" "rm -rf ~/.build/cg-agent && mkdir -p ~/.build/cg-agent && tar -C ~/.build/cg-agent -xf -"
+"${SSH[@]}" 'set -e; cd ~/.build/cg-agent; export GOPROXY=direct GOSUMDB=off GOFLAGS=-mod=mod GOCACHE=$HOME/.cache/go-build GOPATH=$HOME/go PATH=$PATH:/usr/local/bin
+  go mod tidy 2>&1 | tail -3; go vet ./... 2>&1 | tail -20; go test ./... 2>&1 | tail -15
+  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=$(date -u +%Y%m%d%H%M)" -o bin/cg-agent . && ls -la bin/cg-agent && file bin/cg-agent | cut -c1-100'
+mkdir -p cg-agent/bin
+scp -q -i "$KEY" -o BatchMode=yes "$USER_@$HOST:~/.build/cg-agent/bin/cg-agent" cg-agent/bin/cg-agent
+echo "fetched cg-agent/bin/cg-agent ($(stat -c %s cg-agent/bin/cg-agent) bytes)"

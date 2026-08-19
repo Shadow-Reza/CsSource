@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# css-janitor — cap SourceTV demos and stale logs per instance (MISSION §6.7). Runs daily from a timer.
+#  - demos (*.dem) older than DEMO_KEEP_DAYS deleted; total demo dir capped at DEMO_MAX_MB per instance (oldest first)
+#  - srcds logs older than LOG_KEEP_DAYS deleted (logrotate handles the rest)
+set -euo pipefail
+DEMO_KEEP_DAYS="${DEMO_KEEP_DAYS:-14}"; DEMO_MAX_MB="${DEMO_MAX_MB:-3000}"; LOG_KEEP_DAYS="${LOG_KEEP_DAYS:-30}"
+for I in /opt/css/instances/*/; do
+  n=$(basename "$I"); G="$I/root/cstrike"; [ -d "$G" ] || continue
+  find "$G" -maxdepth 1 -name '*.dem' -mtime +"$DEMO_KEEP_DAYS" -delete 2>/dev/null || true
+  # size cap: delete oldest demos until under cap
+  while :; do
+    used=$(du -sm "$G"/*.dem 2>/dev/null | awk '{s+=$1} END{print s+0}')
+    [ "$used" -le "$DEMO_MAX_MB" ] && break
+    old=$(ls -1tr "$G"/*.dem 2>/dev/null | head -1); [ -n "$old" ] || break
+    rm -f "$old"; echo "janitor[$n]: removed demo $(basename "$old") (cap ${DEMO_MAX_MB}MB)"
+  done
+  find "$G/logs" "$G/addons/sourcemod/logs" -type f -name '*.log*' -mtime +"$LOG_KEEP_DAYS" -delete 2>/dev/null || true
+done
+df -h / | tail -1 | awk '{print "janitor: disk used " $5 " (" $3 "/" $2 ")"}'

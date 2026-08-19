@@ -1,0 +1,41 @@
+# Evidence: stock SourceMod 1.12 (git7249, 2026-08-17) does NOT load on CS:S v92 (buildid 6953255)
+$ rcon meta list            (with sourcemod-1.12.0-git7249-linux)
+Listing 1 plugin:
+  [01] <FAILED>
+$ rcon meta load addons/sourcemod/bin/sourcemod_mm
+Failed to load plugin addons/sourcemod/bin/sourcemod_mm (Could not find interface: ServerGameClients005).
+
+# interfaces exported by v92 binaries
+$ strings /opt/css/base/cstrike/bin/server_srv.so | grep -E '^(ServerGameClients|ServerGameDLL)[0-9]+$'
+ServerGameClients003
+ServerGameClients004
+ServerGameDLL010
+# interfaces required by sourcemod.2.css.so
+git7249: PlayerInfoManager002 ServerGameClients005 ServerGameDLL012 VEngineCvar004 VEngineServer021 VEngineServer023
+git7179: ServerGameClients004 ServerGameDLL010 (bisect below)
+
+# bisect over smdrop/1.12 linux builds (check = 'strings sourcemod.2.css.so | grep -qx ServerGameClients004')
+git7065: OLD sdk (004)
+git7144: OLD sdk (004)
+git7193: NEW sdk (005)
+git7167: OLD sdk (004)
+git7179: OLD sdk (004)
+git7187: NEW sdk (005)
+git7183: NEW sdk (005)
+git7182: NEW sdk (005)
+LAST_OLD=7179 FIRST_NEW=7182
+git7179 tarball date 2025-02-17, ships gamedata/core.games/engine.css.txt + sdkhooks.games/game.cstrike.txt
+git7182 tarball date 2025-02-20, both files gone (matches SM commit 5d468dd2 / 1.12 e6e47005)
+sha256 sourcemod-1.12.0-git7179-linux.tar.gz = a88b2e824106299d82cedac89eec35c6b283bd31792e96abc254b70b20f70834
+
+# result with git7179
+$ rcon meta list; sm version
+Listing 3 plugins:
+  [01] SourceMod (1.12.0.7179) by AlliedModders LLC
+  [02] CS Tools (1.12.0.7179) by AlliedModders LLC
+  [03] SDK Tools (1.12.0.7179) by AlliedModders LLC
+ SourceMod Version Information:
+    SourceMod Version: 1.12.0.7179
+    SourcePawn Engine: 1.12.0.7179, jit-x86 (build 1.12.0.7179)
+    Compiled on: Feb 17 2025 12:49:09
+    Built from: https://github.com/alliedmodders/sourcemod/commit/8f921d97

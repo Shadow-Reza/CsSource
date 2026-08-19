@@ -1,0 +1,29 @@
+# Firewall verification (MISSION §6.7) — 2026-08-19
+# Method: temporarily remove the operator IP (5.160.4.2) from operator_v4 + monitoring_v4, then probe from that
+# same (now non-whitelisted) internet IP. A systemd timer re-adds it after 120 s as a dead-man switch.
+
+## With operator IP REMOVED from the firewall sets:
+A2S_INFO to 212.80.8.87:27017 from 5.160.4.2  -> socket timeout   (BLOCKED, correct: A2S opcodes only from monitoring_v4)
+RCON TCP  to 212.80.8.87:27017 from 5.160.4.2  -> RCON_TCP_BLOCKED: TimeoutError   (BLOCKED, correct: RCON only from operator_v4 + loopback)
+SSH       to 212.80.8.87:22    from 5.160.4.2  -> SSH_OK           (SSH deliberately open to all, per MISSION rule 3)
+A2S from the box itself (127.0.0.1 routing to the public IP) -> OK (loopback exempt: the A2S watchdog keeps working)
+
+## After restoring the operator IP:
+A2S_INFO to 212.80.8.87:27017 -> OK (name='Chogan | Public #1 | Classic', 10/32 bots)
+
+## Connectionless game UDP is allowed from any IP (real players connect this way, NOT via A2S):
+# earlier connect from the operator's external machine (5.160.4.2) got the challenge and a Steam-auth reject:
+#   S2C_CHALLENGE 'A': ... authprotocol=3 ...
+#   S2C_CONNECT 'k': ...
+#   S2C_CONNREJECT '9': reason='#GameUI_ServerRejectSteam'
+# => the firewall passed the connectionless challenge/connect packets from an external IP (RevEmu, not the firewall,
+#    is what rejected the forged ticket). So players reaching the server via the launcher are not blocked.
+
+## Ruleset summary (nft list ruleset):
+#  - iif lo accept ; ct established,related accept ; ct invalid drop ; blocklist_v4 drop
+#  - tcp/22 accept (per-source rate limited)
+#  - tcp/80 accept (FastDL)
+#  - tcp dport {27015-27019,27025,27026} from operator_v4 accept, else drop   (RCON)
+#  - udp dport {game} A2S opcodes (T/U/V/W/i) from monitoring_v4/operator_v4 accept, else drop
+#  - udp dport {game} connectionless flood limiter + per-source rate limit, else accept
+#  - default policy drop

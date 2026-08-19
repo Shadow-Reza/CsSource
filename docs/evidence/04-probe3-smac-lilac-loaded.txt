@@ -1,0 +1,55 @@
+[SM] Displaying 8 extensions:
+[01] CS Tools (1.12.0.7179): CS extended functionality
+[02] BinTools (1.12.0.7179): Low-level C/C++ Calling API
+[03] SDK Tools (1.12.0.7179): Source SDK Tools
+[04] SDK Hooks (1.12.0.7179): Source SDK Hooks
+[05] Top Menus (1.12.0.7179): Creates sorted nested menus
+[06] Client Preferences (1.12.0.7179): Saves client preference settings
+[07] MySQL-DBI (1.12.0.7179): MySQL driver implementation for DBI
+[08] <OPTIONAL> file "smrcon.ext.so": /opt/css/instances/pub1/root/cstrike/addons/sourcemod/extensions/smrcon.ext.so: cannot open shared object file: No such file or directory
+
+  Filename: lilac.smx
+  Title: [Lilac] Little Anti-Cheat (An opensource Anti-Cheat)
+  Author: J_Tanzanite
+  Version: 1.7.11
+  URL: https://github.com/J-Tanzanite/Little-Anti-Cheat
+  Status: running
+  Timestamp: 08/18/2026 12:44:21
+  Hash: c8d2372900702db68cd805a78dea46a1
+
+  Filename: smac_wallhack.smx
+  Title: SMAC Anti-Wallhack (Prevents wallhack cheats from working)
+  Author: SMAC Development Team
+  Version: 0.8.8.1
+  URL: https://github.com/Silenci0/SMAC
+  Status: running
+  Timestamp: 08/18/2026 12:44:29
+  Hash: e15340431d49fd7a0875785f3049e567
+
+UserID  AuthID                                   Name
+     2  BOT                                      BOT Chad
+     3  BOT                                      BOT Xavier
+     4  BOT                                      BOT Cory
+     5  BOT                                      BOT John
+     6  BOT                                      BOT Brad
+     7  BOT                                      BOT Wayne
+     8  BOT                                      BOT Victor
+     9  BOT                                      BOT Connor
+    10  BOT                                      BOT Vinny
+    11  BOT                                      BOT Erik
+"smac_wallhack" = "1" min. 0.000000 max. 1.000000
+ - [smac_wallhack.smx] Enable Anti-Wallhack. This will increase your server's CPU usage.
+"smac_wallhack_maxtraces" = "1280" min. 1.000000
+ - Max amount of traces that can be executed in one tick.
+"lilac_ban" = "0" ( def. "1" ) min. 0.000000 max. 1.000000
+ - Enable banning of cheaters, set to 0 if you want to test Lilac before fully trusting it with bans.
+"lilac_angles" = "0" ( def. "1" ) min. -1.000000 max. 1.000000
+ - Detect Angle-Cheats (Basic Anti-Aim, Legit Anti-Backstab and Duckspeed).
+-1 = Log only.
+0 = Disabled.
+1 = Enabled.
+[SM] Value of cvar "smac_version": "0.8.8.1"
+CPU    In_(KB/s)  Out_(KB/s)  Uptime  Map_changes  FPS      Players  Connects
+99.50  0.00       0.00        0       0            66.73    10       10      
+
+lilac.log

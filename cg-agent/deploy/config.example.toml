@@ -1,0 +1,67 @@
+# /etc/cg-agent/config.toml  -  cg-agent configuration
+#
+# Install:  install -o cg-agent -g cg-agent -m 0600 config.example.toml /etc/cg-agent/config.toml
+# The file holds secrets (DB DSN, API token). The agent REFUSES to start if the file is
+# world-readable and contains a secret; 0600 cg-agent:cg-agent is the expected mode.
+#
+# Format: a TOML subset (see README.md "Config file format"):
+#   key = "string" | 'literal string' | 123 | 1.5 | true | false      # comment
+#   [section]                                                          -> keys become section.key
+# No arrays, no inline tables, no multi-line strings, no dotted keys.
+# Unknown keys are warned about at startup (typos), wrong types are errors.
+# Every key is optional; the value shown is the built-in default unless noted.
+
+# ---------------------------------------------------------------------------
+# THE ONE-LINE SWITCH.  stub -> remote when api.chogan.games is ready
+# (and fill in api.token), then: systemctl restart cg-agent
+#   stub   : accept any non-empty ticket, account_id = 1000 + sha256(ticket) % 1000,
+#            display_name "Test Player". No DB, no network.
+#   local  : the agent owns the tickets/accounts tables in MariaDB ([db] dsn required);
+#            POST /v1/tickets issues test tickets.
+#   remote : POST {api.base_url}/v1/servers/redeem with the bearer token.
+# ---------------------------------------------------------------------------
+mode = "stub"
+
+listen = "127.0.0.1:8480"       # keep on loopback: the agent has no authentication of its own
+log_level = "info"              # debug | info | warn | error  (JSON lines on stdout -> journald)
+shutdown_timeout_sec = 5        # SIGTERM: finish in-flight redeems + drain the event queue
+
+[cache]
+ttl_sec = 600                   # authid+ip -> account and ticket-hash cache (MISSION 6.3: ~10 min)
+max_entries = 50000
+
+[api]                           # mode = "remote" only
+base_url = "https://api.chogan.games"
+token = ""                      # Bearer token for this server box (SECRET)
+timeout_sec = 3                 # per attempt
+retries = 1                     # extra attempts on network error / 502 / 503 / 504 (not on 4xx, not on 500)
+redeem_path = "/v1/servers/redeem"
+event_path = "/v1/servers/events"   # assumed; not yet confirmed by the Chogan backend team
+insecure_skip_verify = false    # never in production
+
+[breaker]                       # mode = "remote" only
+failures = 5                    # open after 5 failures ...
+window_sec = 30                 # ... within 30 s; 0 disables the breaker
+probe_interval_sec = 10         # while open: one probe request every 10 s (half-open)
+
+[queue]                         # POST /v1/event -> async write queue (all modes)
+size = 10000                    # bounded; when full new events are dropped (never blocks the plugin)
+workers = 1
+max_attempts = 5                # per event, exponential backoff retry_base_ms .. retry_max_ms
+retry_base_ms = 500
+retry_max_ms = 30000
+
+[db]                            # required for mode = "local" and for sql_transport
+# go-sql-driver DSN. Credentials come from /opt/css/etc/secrets/db.env (05-mariadb.sh):
+#   dsn = "cg_agent:PASSWORD@tcp(127.0.0.1:3306)/chogan_agent"
+dsn = ""                        # (SECRET)
+max_open = 8
+max_idle = 4
+
+[sql_transport]                 # MISSION probe-2 fallback: plugin <-> agent via table cg_auth_requests
+enabled = false                 # (alias: top-level `sql_transport = true`)
+poll_ms = 250
+batch = 50
+
+[tickets]                       # POST /v1/tickets (local/stub mode)
+default_ttl_sec = 90            # MISSION: ~90 s single-use tickets

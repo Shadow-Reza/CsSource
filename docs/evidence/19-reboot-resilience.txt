@@ -1,0 +1,23 @@
+# Boot-resilience test (MISSION §6.1: all supervised by systemd) — 2026-08-19
+# The box was rebooted; nothing was started by hand afterwards.
+boot time: 2026-08-19 10:42:26
+== instances auto-started on boot ==
+  css@pub1 active
+  css@pub2 active
+  css@dm   active
+  css@gg   active
+  css@awp  active
+  css@m1   active
+  css@m2   active
+== support services ==
+  cg-agent   active
+  mariadb    active
+  nginx      active
+  nftables   active
+== timers ==
+  css-watchdog.timer active
+  css-janitor.timer  active
+== firewall persisted (nftables.service) ==
+11
+== enabled units (WantedBy) ==
+enabled enabled enabled enabled enabled enabled enabled enabled 

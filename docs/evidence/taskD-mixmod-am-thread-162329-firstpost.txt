@@ -1,0 +1,328 @@
+Source: Wayback Machine capture 2024-06-09 of https://forums.alliedmods.net/showthread.php?t=162329
+Capture URL: https://web.archive.org/web/20240609234650/https://forums.alliedmods.net/showthread.php?t=162329
+Thread title: [CS:S] Mix Mod (plugin) (v4.3, Updated: 29-07-2012) - author iDragon - first post text (tags stripped).
+Attachments listed on the post: mr15.cfg, prac.cfg, mr3.cfg, mixmod_35.sp (attachmentid=107034), mixmod.sp (attachmentid=107035, 151.2 KB), 'Last edited by iDragon; 12-22-2012'.
+Fetched 2026-08-19 by the Task D research worker. forums.alliedmods.net itself answered every direct request with a Cloudflare challenge (HTTP 403).
+-----
+Running mix was never easier. 
+* Red = new commands that have been added in the latest version! *
+Plugin cvar's (Can be changed through sm_mixmod.cfg that will be automatically-generated when the plugins first loads):
+sm_mixmod_enable - Enable or disable this plugin and its features, 0 - Disable, 1 - Enable. (Defult: "1")
+sm_mixmod_enable_knife_round - Before the mix starts, do knife round? 0 - Disable, 1 - Enable (Default: "0").
+sm_mixmod_mr3_enable - Enable or disable mr3 settings (when there is a tie 15-15): 0 - Disable, 1 - Enable (Default: "1")
+sm_mixmod_auto_warmod_enable (beta) -Enable Auto-Warmod and ready system? 0 - No, 1 - Yes. (Default: "0")
+sm_mixmod_half_auto_live - When new half begins, automatically start live? 0 - No, 1 - Yes (Default: "0").
+sm_mixmod_live_restart_time - In seconds, set mp_restartgame <time> in live command (Default: "1").
+sm_mixmod_showmoney - Show players money and if they have primary weapon to their team-mates? 0 - No, 1 - Yes. (Default: "1")
+sm_mixmod_show_cash_in_panel - When round starts, show players money in? 0 - Chat, 1 - Panel(menu) - The panel will disappear after freeze-time (Default: "0").
+sm_mixmod_showscores - Show mix scores at round_start? 0 - No, 1 - Yes. (Default: "1")
+sm_mixmod_show_swap_in_panel - In the last round of the current half, tell the players not to switch their teams in: ? 0 - Chat, 1 - Panel(menu) - The panel will disappear after freeze-time (Default: "1").
+sm_mixmod_enable_rr_command - Enable the sm_rr command in this mix mod? (Set to "0" if you have another plugin who uses sm_rr) 0 - No, 1 - Yes. (Default: "1")
+sm_mixmod_enable_st_sound - Play sound when teams are switched when half1 ends? 0 - No, 1 - Yes. (Default: "1")
+sm_mixmod_use_zb_lo3 - Use zb_lo3 command instead of mp_restartgame (Only if zb_warmod is enabled!) ? 0 - No, 1 - Yes (Default: "0").
+sm_mixmod_use_zb_ko3 - Use zb_ko3 command instead of mp_restartgame when knife round begins (Only if zb_warmod is enabled!) ? 0 - No, 1 - Yes (Default: "0").
+sm_mixmod_custom_name_ct - Set counter terrorists team custom name (Default: "Team A").
+sm_mixmod_custom_name_t - Set terrorists team custom name (Default: "Team B").
+sm_mixmod_custom_live_cfg - Custom name of the mr15 (live or match) config: (If the name doesn't exist, the plugin will try to execute match/live/mr15/esl5on5 cfg) (Default: "mr15.cfg").
+sm_mixmod_custom_prac_cfg - Custom name of the prac (warmup) config: (If the name doesn't exist, the plugin will try to execute prac / warmup config) (Default: "prac.cfg").
+sm_mixmod_custom_mr3_cfg - Custome name of the mr3 config: (If the name doesn't exist, the plugin will try to execute mr3.cfg) (Default: "mr3.cfg").
+sm_mixmod_custom_stop_cfg - Use stop.cfg instead of prac or warmup cfg when sm_stop command is performed? 0 - No, 1 - Yes (Default: "0").
+sm_mixmod_kick_admins - When admin performs sm_kickct or sm_kickt , kick the admins too? 0 - No, 1 - Yes. (Default: "0").
+sm_mixmod_maplist_from - Generate maplist for sm_maps from: 0 - maps directory , 1 - mapcycle.txt (Default: "0")
+sm_mixmod_disable_public_chat - Disable public chat (Only team chat will be shown)? 0 - No, 1 - Yes, 2 - Only when live is running (Default: "0").
+sm_mixmod_show_winner_in- When mix is ended, show winning team in: 0 - Chat, 1 - Panel(menu) (Default: "1").
+sm_mixmod_rpw_show_pass - Show the random password to everyone? 0 - No (only to the admin), 1 - Yes.
+sm_mixmod_remove_props - Remove map props (like barrels) at round start when mix is running? 0 - No, 1 - Yes. (Default: "0")
+sm_mixmod_auto_warmod_random -After 10 players are ready, random the team players and start? 0 - No, 1 - Yes. (Default: "1")
+sm_mixmod_auto_warmod_ban-In minutes: how long to ban player who has left the server when auto-war is running? <Negetive number> - Don't ban, <Positive Number> - Time, 0 - Permanent ban (Default: "-1" - Don't ban)
+sm_mixmod_autorecord_enable - Auto record the mix when live is started (until the end of the mix)? 0 - No, 1 - Yes. (Default: "0") (the record name will be: Auto-12-08-2011-1123-de_dust2.demo (Auto-date-time-map)
+sm_mixmod_autorecord_save_dir - Save directatory for the auto-records (if folder doesn't exist, the record will be saved at: cstrike/ ). (Default: "mix_records" - You need to create this folder!)
+sm_mixmod_knife_round_win_vote - Let the wining team in the knife round decide in which team they want to be? 0 - No, 1 - Yes. (Default: "0")
+sm_mixmod_password_commands_enable - Enable password commands (sm_pw , sm_npw or sm_rpw)? 0 - No, 1 - Yes. (Default: "1")
+sm_mixmod_manual_switch_enable - Allow players to switch their team manualy when mix is running? 0 - No, 1 - Yes. ( only admins can change their team if set to "0") (Default: "1")
+sm_mixmod_time_before_swapping_teams - In seconds: how long should the plugin wait before swapping teams when half ends? (Default: "0.1")
+sm_mixmod_show_tk_damage - Inform all the players in the server when TK (Team killing / team damage) has been done? 0 - No, 1 - Yes. (Default: "1")
+sm_mixmod_remove_password_on_mix_end - Remove the password when mix is ended (not by sm_stop command)? 0 - No, 1 - Yes. (Default: "1")
+sm_mixmod_show_mvp - Show the most valuable player of the round / mix (at the end)? 0 - No, 1 - Yes. (Default: "1")
+sm_mixmod_dont_remove_props_maplist - Don't remove props from those maps (Default: "de_inferno,") - Don't play too much with this option...
+sm_mixmod_enable_voice_commands - Enable sm_mmute and sm_mgag commands? 0 - No, 1 - Yes. (Default: "1")
+sm_mixmod_version - The version of this plugin.
+Admin commands:
+sm_start - Starts a new mix.
+sm_pcw - Starts a mix, that will save the scores. (Even when Restarting the game - or after new half begins).
+sm_stop - Stops the current mix (If running).
+sm_live - Starts the game (live ...).
+sm_notlive or sm_nl - Pause the mix untill sm_live is typed again.
+sm_mr15 or sm_match - Executes the mr15 (match) config.
+sm_prac or sm_warmup - Executes the prac (warmup) config.
+sm_password or sm_pw - (Usage: sm_pw "password" to change password) Change the server password.
+sm_swapteams or sm_st - Swaps each player team (To the other team, CT -> T, T->CT)
+sm_st - Swap player to another team (Usage: sm_st <player> [team] (legal team: ct/t/spec/1/2/3).
+sm_rpw - Set a random password to the server.
+sm_rr - (Usage: sm_rr "seconds") Restarting the game in "seconds" (Default: seconds = "1").
+sm_kickct - Kick ct team.
+sm_kickt -Kick t team.
+sm_maps - Show maps menu, to changelevel (Only de_ maps are shown).
+sm_ko3 or sm_knifes- Starts knife round.
+sm_spec - (Usage: sm_spec <player> )Move player to spectors team.
+sm_mix - Opens mix menu (See pic2 to see the menu).
+sm_pause - Pause the mix for the current round (The current round will be like it was never played.)
+sm_disablechat - Allows admins to change chat settings through command. (Usage: sm_disablechat <num> (0-Enable public chat, 1-Disable public chat, 2-Disable public chat only when live))
+sm_npw - Remove the server password.
+sm_record - Starts a record (the record won't be ended until admin use sm_stoprecord or the map will be changed) with the name: day-month-year-hourMinute-map (12-08-2011-1123-de_dust2.demo .)
+sm_stoprecord - Stop the record (if running).
+sm_mmute \ sm_munmute - Mute / Unmute player (Usage: sm_mmute / sm_munmute <target>).
+sm_mgag \ sm_mugag - Gag / Ungag player (Usage: sm_mgag / sm_mungag <target>).
+sm_last - Shows the last player that joined the game (Name and Steamid).
+ * When auto-war is running, admin can type: sm_start to start normal mix! (Even if there isn't 10 ready players) - 2 options to start a mix.
+Players commands:
+sm_score - Show the round number and team scores to the player who typed this.
+sm_password or sm_pw - (Usage: sm_pw) To see the server's password.
+sm_mixhelp - Show all the admin and player commands in a menu.
+sm_mvp - Show the most valuable player and the difference between the mvp and you. (Only when mix is running). 
+----------------------- (Ready system commands) --------
+sm_ready or sm_rdy - Become ready. (beta)
+sm_notready or sm_unready or sm_urdy or sm_nrdy - Become not ready. (beta)
+sm_teams- When auto-war(mix) is running (with live), players can type: sm_teams to see the teams. (beta)
+Plugin Requirments:
+ mr15/match/live config. - Have to be named as: match.cfg or mr15.cfg or live.cfg (Or use you custom name: sm_mixmod_custom_live_cfg <name.cfg>)
+prac/warmup config. - Have to be named as: warmup.cfg or prac.cfg. (Or use you custom name: sm_mixmod_custom_prac_cfg <name.cfg>)
+If <sm_mixmod_mr3_enable> is set to "1", you need to have mr3.cfg in you server. (Or use you custom name: sm_mixmod_custom_mr3_cfg <name.cfg>)
+If <sm_mixmod_custom_stop_cfg> is set to "1", you need to have stop.cfg in your server.
+If you have the auto-record set to "1", you need to create a new folder named: "mix_records" under the cstrike/ directatory (if you won't, the records will be saved in cstrike/ ).
+* The configs folder is here: cstrike/cfg/
+How to use (And what the plugin does):
+There are 2 half in mix (or pcw).
+In half 1 there will be 15 rounds, the teams will be automatically-swapped and in half 2 the first team to reach to 16 in their score will win the game (They will continue with their score from half1).
+If at the end of half 2, both teams has 15 in their score:
+If <sm_mixmod_mr3_enable> is set to "1", both teams will be auto-swapped again (to their original team), and will continue to play untill one team reached 19 in their score. If after 3 rounds nobody reached 18 in their score, the teams will be swapped again and they'll continue to play until one team reached 19.
+-----------
+When the teams are ready to start the game, the admin types sm_start and the mix starts.
+Counter terrorists team will be named as "Team A" in the plugin, and the Terrorists team will be named as "Team B".
+Every round start the plugin will write in chat the round number and the team scores (and the your team-mates cash and + if they have primary weapon - See pic)
+When round number 15 will be ended, the plugin will auto-swap the players to the other teams, and will wait for the admin to type: sm_live to start half 2.
+In half 2, the first team to reach to 16 in their score (they are continuing from the score they had in half1) will win the game. 
+Match pic:
+[IMG]http://img405.**************/img405/3107/unledbqf.png[/IMG]
+Mix menu (It's not correctly for the newest version): (But it's look almost the same)
+[IMG]http://img814.**************/img814/4622/mixmenupic.png[/IMG]
+How to install:
+Download mixmod.smx (from the attachments) and put it here:
+cstrike/addons/sourcemod/plugins/
+(You can download mixmod_35.smx too, but it has more bugs...)
+If you don't have any cfg file, you can download the configs that I attached (mr3.cfg , mr15.cfg and prac.cfg), and put them here:
+cstrike/cfg/
+*If you have already installed previous version of this plugin, do not forget to delete sm_mixmod.cfg (cstrike/cfg/sourcemod/) - Another commands will be added!
+----------------------
+If there are any problems with this plugin (except my english ) I will be more than happy to fix them. 
+changelog:
+ Quote:
+ - 29-07-12 (v4.3)
+ * Fixed a bug with sm_mmute command! - Sometimes, when players spawn, the mute is gone.
+ * Add command to enable/disable the commands: sm_mmute / sm_mgag:
+ - sm_mixmod_enable_voice_commands (Default: "1")
+----------------
+- 20-07-12 (v4.3)
+ * Fixed a bug with the MVP system - When RR'ing mvp scores weren't reseted.
+ * Support for not removing props from specified maplist has been added.
+ - sm_mixmod_dont_remove_props_maplist (Default: "de_inferno,")
+ * Fixed a bug with sm_ko3 command - which caused the plugin to swap teams at the end of the first round.
+----------------
+- 08-07-12 (v4.2b)
+ * sm_last has been added - This command will show the last player that joined steamid and name.
+----------------
+- 07-06-12 (v4.2)
+ * sm_mvp has been added to show mvp kills during a game.
+----------------
+- 02-06-12 (v4.1b):
+ * Fixed a bug with auto-recording. (A new record wasn't started right after a mix ended).
+----------------
+- 19-05-12 (V4.1):
+ * Fixed a bug with sm_pause (Gives 0$ and no gun to a player who joins the game when sm_pause is being used!)
+ * Added sm_mgag and sm_mungag.
+----------------
+- 17-05-12 (V4.0):
+ * sm_st will not decrease scores when sm_pcw running!
+ * Warn the user that entered in the middle of a mix, that mix is running.
+ * 3 Score points added when defusing the bomb.
+ * 3 Score points added when the bomb explodes.
+----------------
+- 16-05-12 (V3.9):
+ * MVP Display at round End will show only from 3 kills or above...
+ * TK won't be counted as a score/death.
+ * Random Teams bug (Only CT players can be randomized - not spec) has been fixed.
+----------------
+- 13-05-12 (V3.8a):
+ * MVP System Will show now if an ace was done.
+ * sm_random Fixed! (Creating random teams)
+ * Added sm_mmute and sm_munmute. - I've got about 5 requests to add these commands...
+ * Fixed the MVP System.
+ * sm_pcw Added to Mix-Help menu. (sm_pcw - Will remember the game scores, even after RR).
+ * Enable/Disable MVP Stats has been added to admin menu.
+----------------
+- 12-05-12 (V3.:
+ * Added support for MVP.
+ - sm_mixmod_show_mvp (Default: "1")
+ * Can remove the password automaticaly when mix is ending (not by sm_stop command).
+ - sm_mixmod_remove_password_on_mix_end (Default: "1")
+- 04-06-2011 - 11-05-12 (v3.6-v3.7b)
+ * Some changes. I don't remember them...
+----------------
+03-09-2011 (v3.5)
+* Fixed some problems that musosoft help me find (I don't remember them - few days has left already and I forgot to note them).
+* TK-Damage is now showing the armor damage that has been done too!
+* TK-Damage not showing the self-damage that has been done (self-grenade damage and etc...)
+----------------
+30-08-2011 (v3.4c)
+* TK-damage wasn't working properly ... Now it's fixed!
+----------------
+30-08-2011 (v3.4b)
+* The plugin is using now MaxClients instead of the variable maxClients
+----------------
+29-08-2011 (v3.4)
+* Option to see that a player is attacking another player in his same team has been added!
+- sm_mixmod_show_tk_damage (Default: "1")
+----------------
+19-08-2011 (v3.3)
+* Fixed an issue with disabling players ability to change their team (when player is retrying to the server, he get stuck in the spec team).
+* Fixed compile warnings! (in v3.2, I didn't try to compile the plugin so I haven't notice all the warnings).
+----------------
+15-08-2011 (v3.2)
+* The plugin will wait now <sm_mixmod_time_before_swapping_teams> seconds before swapping teams when half ends!
+- sm_mixmod_time_before_swapping_teams (Default: "0.1")
+* Option to disable players ability to change their team (jointeam command) when mix is running has been added! (When disabled, only admins can change players team).
+- sm_mixmod_manual_switch_enable (Default: "1" - They can change their team).
+* Knife vote (for the winning team of the knife round) is now enabled only when sm_start has been used! if the admin just used !ko3, the vote will not be a vote.
+----------------
+14-08-2011 (v3.1)
+* Bug found! - When removing props in de_inferno, some objects are removed, but they are still there invisible (I hope to fix it soon),
+* Command to see all the admin and player commands (and how to use them) has been added!
+- sm_mixhelp
+* After knife round (ko3) has ended, if auto-half-live is on, the live will start automatically.
+* When knife round (ko3) is running, only knife can be used.
+* sm_st and sm_swapteams has been updated! now admin can change player team with them!
+-sm_st <player> [team] (legal teams: ct/t/spec/1/2/3)
+* Fixed: when random password is shown only to admins, players can use sm_pw to see the password.
+----------------
+12-08-2011 (v3.0)
+* New admin commands has been added!
+- sm_record (start a record).
+- sm_stoprecord (stop the record).
+* Option to let the winning team in knife round to choose their team has been added!
+- sm_mixmod_knife_round_win_vote (Default: "0")
+* Auto-Record option has been added!
+- sm_mixmod_autorecord_enable (Default: "0")
+- sm_mixmod_autorecord_save_dir (Default: "mix_records")
+----------------
+07-08-2011 (v3.0Beta)
+* When player is disconnecting from the server when Auto-Mix is running, option to ban him has been added!
+- sm_mixmod_auto_warmod_ban <time> (time in minutes) (Default: "-1")
+(If <time> is negative (< 0) it won't ban, if <time> its 0 it will permanently ban, if time is positive (> 0) it will ban for <time> minutes)
+* Sub system has been added, but it's disabled in this version.
+* Option to random the team players when there are 10 ready players has been added!
+- sm_mixmod_auto_warmod_random (Default: "1")
+* sm_teams has been added! players can see the teams in auto-war.
+* sm_pw and sm_password has been changed! now any player can type them to see the server password (only admins can change password).
+* Ready system has been added (Beta system).
+---------------
+04-08-2011(v2.6)
+* Players money list at round_start is now sorted! (from highest to lowest).
+* Option to remove all props from the map (every round_start) when mix is running has been added!
+- sm_mixmod_remove_props (Default: "1")
+----------------
+02-08-2011(v2.5)
+* I forgot to save the vest and armor in the sm_pause command... (Has been added).
+* sm_pause is now working correctly! scores, weapons and client money is now being saved and will be regained the next round.
+* sm_npw has been added! Password can be removed now through this command. (v2.4)
+----------------
+27-07-2011 (v2.3)
+* Big issue with wrong team scores has been fixed!
+* Option to show random password to everyone or only to the admin who performed the sm_rpw has been added:
+- sm_mixmod_rpw_show_pass (Default: "1")
+* sm_pause is working now (it didn't work before).
+---------------
+26-07-2011 (v2.2)
+* After switching teams in half1 zb_lo3 or mp_restartgame will be executed to give some time to "breathe".
+* Text has been changed to ko3 round.
+* Bug fixed: wrong round number in the first round of half 2
+* Mr3 fixed (- Can now be played like it supposed to be played). - TY karil.
+* sm_pause added: see the info above. 
+* sm_disablechat added: disable or enable public chat (view info above).
+----------------
+25-07-2011 (v2.1)
+* Fixed an issue: Score has been added to the "winning team" when swapping teams at the end of half1 (swapping teams slays all the players).
+* Option added: When mix has ended, the winning team could be displayed in panel or in chat (0 - chat, 1 - panel).
+- sm_mixmod_show_winner_in (Default: "1")
+* Bug fixed: After the mix has ended, it told that there was a DRAW instead of telling the name of the winning team.
+* Bug fixed: the plugin wrote that sm_live is needed to start the match although <sm_mixmod_half_auto_live> is set to "1".
+* Fixed an issue with wrong round number (round 2 after !nl, !live and !rr) (v2.0)
+* sm_mix command has been added (opens a menu)
+* Option to Use zb_ko3 instead of mp_restartgame when knife round starts has been added:
+- sm_mixmod_use_zb_ko3 (Default: "0")
+* Option to start the match with knife round has been added (sm_live after knife round is finished):
+- sm_mixmod_enable_knife_round (Default: "0")
+* sm_spec , sm_ko3 , sm_knifes added (v1.9)
+---------------
+24-07-2011 ( v1.8 )
+* sm_kickct , sm_kickt , sm_maps has been added.
+- sm_mixmod_kick_admins (Default: "0")
+* Cvars for using custom names cfg are added (Beta) (v1.7)
+- sm_mixmod_custom_mr15_cfg (Default: "mr15.cfg")
+- sm_mixmod_custom_prac_cfg (Default: "prac.cfg")
+- sm_mixmod_custom_mr3_cfg (Default: "mr3.cfg")
+---------------
+23-07-2011 (v1.6)
+* Hook to freeze-time end event, has been removed.
+* You can choose now if you want the sm_live command to be auto-performed when new half begins, or the admin should type sm_live to start the new half.
+- sm_mixmod_half_auto_live (Default: "0")
+* You can choose now where to display the money of each team, through chat, or through panel (menu).
+- sm_mixmod_show_cash_in_panel (Default: "0")
+* You can now decide in which way the plugin will tell the people not to change their teams (Through chat, or through panel (menu)).
+- sm_mixmod_show_swap_in_panel (Default: "1")
+* When using sm_stop command, stop.cfg could be loaded instead of prac / warmup config.
+- sm_mixmod_custom_stop_cfg (Default: "0")
+* Fixed bug: when all the players in one have been died in freeze-time, the round has been "skipped".
+* Mr3 can now be played when there is a tie (15-15):
+- sm_mixmod_mr3_enable (Default: "1")
+----------------
+21-07-2011 (v1.4)
+* Fixed bug: The version of this plugin wasn't being updated.
+* Added option to run zb_lo3 instead of mp_restartgame if zb_warmode is enabled (Version updated: v1.4):
+- sm_mixmod_use_zb_lo3 (Default: "0")
+* Restarts the game after <sm_mixmod_live_restart_time> seconds (Version updated: 1.3)
+* Custom team name added (Version updated: 1.2):
+- sm_mixmod_custom_name_ct (Default: "Team A")
+- sm_mixmod_custom_name_t (Default: "Team B")
+* Fixed bug: When restarting the game in the middle of freeze-time, 1 is being added to the current round (first round = 2nd round in the plugin).
+----------------
+18-07-2011 (v1.0)
+* Loose idantation warnings when compiling - fixed!
+----------------
+17-07-2011 (v1.0)
+* Released this plugin.
+To do list:
+Add cvar to change team names to custom names.-->DONE!
+Do not use mp_restartgame when zb_lo3 is exist in the server (Else, mp_restartgamer in cvarX seconds).-->DONE!
+Add the mr3 to the plugin (When there is a tie: 15-15).-->DONE!
+Add another cvar to choose if run stop.cfg when sm_stop command its performed.-->DONE!
+Add option to auto-live a new half when it begins-->DONE!
+Add sm_kickt and sm_kickct commands.-->DONE!
+Add sm_maps commands (show all de_ maps and then change to the selected map).-->DONE!
+Add cvar to disable "public" say chat (enable only team chat).-->DONE!
+Add sm_spec command.-->DONE!
+Add sm_mix command (Show menus - View page 3 karil's post).-->DONE!
+Organize the list of players money from the top to the low (money value).-->DONE!
+Add the autostart with sm_ready to the plugin (With cvar to disable).-->DONE!
+If 12 is added: Add another cvar to randomize the players in the server before the mix is starting (after everyone typed sm_ready).-->DONE!
+Finish the sub-system-->DONE (But disabled)!
+SourceTV auto-recording.-->DONE!
+After team wins knife round, give them choice to "Leave" (switch teams) or "Stay" (run live).-->DONE!
+Add quick match commands (like this) - Thanks to musosoft for the idea.
+Fix the props problen in de_inferno (it removing the props, but somehow an invisible object it's still there. -* Fixed for now with the command: <sm_mixmod_dont_remove_props_maplist>
+Add SQL based DB, most mvp players support.
+ Thank you:
+Xaider (http://forums.alliedmods.net/member.php?u=45876) - I used his sm_rr (from advcommands) (- I copied it into my plugin, because there are many people who don't want advcommands in their server (little admins, etc...) ).
+Despirator (http://forums.alliedmods.net/member.php?u=144072) - For helping me to get rid of this 2 warnings (Loose idantation).
+Karil (http://forums.alliedmods.net/member.php?u=67488) - For helping me testing this plugin, for giving me great ideas and for reporting bugs with this plugin!
+Zombie:Reloaded plugin (http://forums.alliedmods.net/forumdisplay.php?f=132) - I used some of this plugin code to get players grenades number.
+musosoft (http://forums.alliedmods.net/member.php?u=44703) - For helping me by testing this plugin and reporting the bugs.

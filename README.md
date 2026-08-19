@@ -5,8 +5,11 @@ Ubuntu 24.04 VM (`212.80.8.87`), systemd-supervised, shared read-only base
 + per-instance overlayfs, phone-number auth via `cg-agent` sidecar, MariaDB,
 nginx FastDL, SMAC/Lilac anti-cheat, nftables firewall, A2S watchdog.
 
+* **Start here if you are picking this up:** [docs/HANDOFF.md](docs/HANDOFF.md) — integration contract for the
+  launcher/API team, rules for future sessions, and the prioritised to-do list.
 * Spec: [MISSION.md](MISSION.md) — read it before touching anything.
-* Decisions / errors / versions: [docs/](docs/)
+* Operating guide: [docs/runbook.md](docs/runbook.md)
+* Decisions / errors / versions: [docs/](docs/) · raw evidence: [docs/evidence/](docs/evidence/)
 * Final report (Persian): [docs/FINAL-REPORT.md](docs/FINAL-REPORT.md)
 
 Layout (filled in as the build progresses):

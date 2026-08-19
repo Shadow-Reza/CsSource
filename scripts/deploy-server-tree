@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# deploy-server-tree — push every file under server/ (except provision/) to the VM at the same path (root-owned),
+# as ONE tarball (fast). Files under server/opt/css/bin and *.sh get 0755, everything else 0644. systemd reloads.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+CR=$(printf '\r')
+if grep -rlI "$CR" server 2>/dev/null | head -1 | grep -q .; then
+  echo "deploy-server-tree: CRLF line endings found in:"; grep -rlI "$CR" server; exit 1
+fi
+HOST="${CSS_HOST:-212.80.8.87}"; USER_="${CSS_USER:-cssource}"; KEY="${CSS_KEY:-$HOME/.ssh/chogan_css}"
+PWF="${CSS_SUDOPW_FILE:-$HOME/.ssh/chogan_css.sudopw}"
+SSH=(ssh -i "$KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$USER_@$HOST")
+tar -C server --exclude=./provision --owner=0 --group=0 --mode=u+rwX,go+rX,go-w -cf - . | "${SSH[@]}" "mkdir -p ~/.stage && cat > ~/.stage/tree.tar"
+{ cat "$PWF"; cat <<'EOS'
+set -e
+tar -C / --no-same-owner --no-overwrite-dir -xf /home/cssource/.stage/tree.tar
+chown root:root -R /opt/css/bin /opt/css/etc/templates /opt/css/etc/instances 2>/dev/null || true
+chmod 0755 /opt/css/bin/* 2>/dev/null || true
+find /opt/css/etc /etc/nftables.conf /etc/nginx/sites-available/fastdl /etc/systemd/system/css* /etc/logrotate.d/css -type f -exec chmod 0644 {} + 2>/dev/null || true
+rm -f /home/cssource/.stage/tree.tar
+systemctl daemon-reload && echo "deployed server tree; daemon-reloaded"
+EOS
+} | "${SSH[@]}" "sudo -S -p '' bash -s"

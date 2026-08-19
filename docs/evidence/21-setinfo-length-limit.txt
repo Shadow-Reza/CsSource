@@ -1,0 +1,25 @@
+# HARD LIMIT: how long may the launcher's `setinfo lt <token>` value be?  (measured 2026-08-19)
+#
+# Method: pub1 temporarily given Valve's steamclient.so via its OWN overlay upper layer (base untouched,
+# see decisions D-007) + `sv_lan 1; changelevel` so a synthetic client can complete the handshake.
+# scripts/srcclient sent `lt` values of increasing length; probe_setinfo.smx logged what
+# GetClientInfo(client,"lt",...) actually returned server-side.
+#
+#   sent=100  received=100
+#   sent=250  received=250
+#   sent=255  received=255
+#   sent=260  received=259      <-- truncation starts here
+#   sent=300  received=259
+#   sent=500  received=259
+#   sent=1000 received=259
+#
+# RESULT: a userinfo (setinfo) VALUE is capped at a 260-byte buffer => **259 usable characters**.
+# Longer values are SILENTLY TRUNCATED - no error, no disconnect, the server just sees the first 259 chars.
+#
+# CONSEQUENCE FOR THE LAUNCHER (very important):
+#   * A JWT does NOT reliably fit (typical JWTs are 200-500+ chars and grow with claims). Do NOT put a JWT in `lt`.
+#   * Use a SHORT OPAQUE ticket: <= 200 chars to be safe (cg-agent's own local mode issues ~43-char tokens).
+#   * The server-side plugin cannot detect truncation, so an over-long token fails as "invalid" - a confusing
+#     production bug. Enforce the length limit in the launcher.
+#
+# This CONFIRMS MISSION section 3's "260 bytes per key/value" claim and pins the exact usable number (259).

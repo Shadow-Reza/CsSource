@@ -1,0 +1,8 @@
+L 08/19/2026 - 09:10:25: [probe_ripext.smx] [probe2] plugin loaded v0.1.0 — GetExtensionFileStatus("rip.ext")=1 (running) LibraryExists(ripext)=1
+L 08/19/2026 - 09:10:27: [probe_ripext.smx] [probe2] kickoff: firing 3 async GETs (https://api.github.com/zen, https://api.github.com/rate_limit, http://127.0.0.1:8480/health)
+L 08/19/2026 - 09:10:27: [probe_ripext.smx] [probe2] RESULT url=http://127.0.0.1:8480/health verdict=OK status=200 elapsed=0.014s content-type=application/json; charset=utf-8 content-length=722 body_len=721 (json) server=(none) preview={"status":"ok","version":"202608190908","mode":"stub","listen":"127.0.0.1:8480","started_at":"2026-08-19T09:09:12.203189904Z","uptime_sec":75,"breaker":{"state"
+L 08/19/2026 - 09:10:27: [probe_ripext.smx] [probe2] url=http://127.0.0.1:8480/health: content-type is JSON, parsing body via response.Data
+L 08/19/2026 - 09:10:28: [probe_ripext.smx] [probe2] RESULT url=https://api.github.com/rate_limit verdict=OK status=200 elapsed=0.914s content-type=application/json; charset=utf-8 content-length=424 body_len=423 (json) server=fasthttp preview={"resources":{"code_search":{"limit":60,"remaining":59,"reset":1787134228,"used":1},"core":{"limit":60,"remaining":59,"reset":1787134228,"used":1},"graphql":{"l
+L 08/19/2026 - 09:10:28: [probe_ripext.smx] [probe2] RESULT url=https://api.github.com/zen verdict=OK status=200 elapsed=1.079s content-type=text/plain;charset=utf-8 content-length=51 body_len=51 (content-length) server=github.com preview=(n/a)
+L 08/19/2026 - 09:10:28: [probe_ripext.smx] [probe2] url=https://api.github.com/rate_limit: content-type is JSON, parsing body via response.Data
+[SM] Usage: sm exts info <#>

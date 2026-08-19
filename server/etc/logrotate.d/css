@@ -1,0 +1,20 @@
+# CS:S instance logs (MISSION §6.7: cap and rotate from the start; disk is ~50 GB)
+/opt/css/instances/*/root/cstrike/logs/*.log /opt/css/instances/*/root/cstrike/addons/sourcemod/logs/*.log {
+    daily
+    rotate 14
+    maxsize 50M
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su root root
+}
+/var/log/css/*.log {
+    weekly
+    rotate 4
+    missingok
+    notifempty
+    compress
+    copytruncate
+}

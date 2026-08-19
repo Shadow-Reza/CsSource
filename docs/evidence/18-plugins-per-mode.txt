@@ -1,0 +1,45 @@
+== pub1 ==
+  "SMAC Anti-Wallhack" (0.8.8.1) by SMAC Development Team
+  "[Chogan] Rate policy" (0.1.0) by Chogan build (autonomous run)
+  "[Lilac] Little Anti-Cheat" (1.7.11) by J_Tanzanite
+  "[Chogan] Auth (phone-account login)" (0.2.0) by Chogan build (autonomous run)
+  "MapChooser" (1.12.0.7179) by AlliedModders LLC
+== pub2 ==
+  "SMAC Anti-Wallhack" (0.8.8.1) by SMAC Development Team
+  "[Chogan] Rate policy" (0.1.0) by Chogan build (autonomous run)
+  "[Lilac] Little Anti-Cheat" (1.7.11) by J_Tanzanite
+  "[Chogan] Auth (phone-account login)" (0.2.0) by Chogan build (autonomous run)
+  "MapChooser" (1.12.0.7179) by AlliedModders LLC
+== dm ==
+  "SMAC Anti-Wallhack" (0.8.8.1) by SMAC Development Team
+  "[Chogan] Rate policy" (0.1.0) by Chogan build (autonomous run)
+  "[Lilac] Little Anti-Cheat" (1.7.11) by J_Tanzanite
+  "[Chogan] Auth (phone-account login)" (0.2.0) by Chogan build (autonomous run)
+  "[Chogan] DeathMatch" (0.1.0) by Chogan build (autonomous run)
+  "MapChooser" (1.12.0.7179) by AlliedModders LLC
+== gg ==
+  "SMAC Anti-Wallhack" (0.8.8.1) by SMAC Development Team
+  "[Chogan] Rate policy" (0.1.0) by Chogan build (autonomous run)
+  "[Lilac] Little Anti-Cheat" (1.7.11) by J_Tanzanite
+  "[Chogan] Auth (phone-account login)" (0.2.0) by Chogan build (autonomous run)
+  "[Chogan] GunGame" (0.1.0) by Chogan build (autonomous run)
+  "MapChooser" (1.12.0.7179) by AlliedModders LLC
+== awp ==
+  "SMAC Anti-Wallhack" (0.8.8.1) by SMAC Development Team
+  "[Chogan] Rate policy" (0.1.0) by Chogan build (autonomous run)
+  "[Lilac] Little Anti-Cheat" (1.7.11) by J_Tanzanite
+  "[Chogan] Auth (phone-account login)" (0.2.0) by Chogan build (autonomous run)
+  "[Chogan] Weapon Restrict" (0.1.0) by Chogan build (autonomous run)
+  "MapChooser" (1.12.0.7179) by AlliedModders LLC
+== m1 ==
+  "SMAC Anti-Wallhack" (0.8.8.1) by SMAC Development Team
+  "[Chogan] Rate policy" (0.1.0) by Chogan build (autonomous run)
+  "[Lilac] Little Anti-Cheat" (1.7.11) by J_Tanzanite
+  "[Chogan] Auth (phone-account login)" (0.2.0) by Chogan build (autonomous run)
+  "[Chogan] Match" (0.1.0) by Chogan build (autonomous run)
+== m2 ==
+  "SMAC Anti-Wallhack" (0.8.8.1) by SMAC Development Team
+  "[Chogan] Rate policy" (0.1.0) by Chogan build (autonomous run)
+  "[Lilac] Little Anti-Cheat" (1.7.11) by J_Tanzanite
+  "[Chogan] Auth (phone-account login)" (0.2.0) by Chogan build (autonomous run)
+  "[Chogan] Match" (0.1.0) by Chogan build (autonomous run)

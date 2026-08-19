@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Normalise ownership/modes on the shared base after every steamcmd run.
+# dirs 2775 (setgid css), files g+w, keep exec bits. Must NOT run while any overlay is mounted (lower must not change).
+set -euo pipefail
+BASE=/opt/css/base
+if grep -qs "lowerdir=$BASE" /proc/mounts; then
+  echo "css-base-fixperms: refusing — overlays are mounted on top of $BASE (stop css@* first)" >&2; exit 1
+fi
+chown -R cssbase:css "$BASE"
+find "$BASE" -type d -exec chmod 2775 {} +
+find "$BASE" -type f -exec chmod u+rw,g+rw,o+r {} +
+find "$BASE" -type f -perm /111 -exec chmod ugo+x {} +
+echo "css-base-fixperms: done ($(find "$BASE" -type f | wc -l) files)"
