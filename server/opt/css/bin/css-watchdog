@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """css-watchdog — A2S liveness watchdog for css@* instances (MISSION §6.7).
 srcds can hang while still holding its port; systemd never notices. Every run (systemd timer, 30 s):
-for each active css@<i>: A2S_INFO to 127.0.0.1:<port> (2 tries, 2 s each). Consecutive failures are
+for each active css@<i>: A2S_INFO to <CSS_IP>:<port> (2 tries, 2 s each). Consecutive failures are
 counted in /run/css/watchdog/<i>.fails; at FAIL_LIMIT we `systemctl restart css@<i>` and log loudly.
 Instances started less than GRACE_SEC ago are skipped (map load). Run as root."""
 import os, re, socket, subprocess, sys, time, json
@@ -30,6 +30,7 @@ def main():
             continue
         env = open(f"/opt/css/etc/instances/{n}.env").read()
         port = int(re.search(r"^CSS_PORT=(\d+)", env, re.M).group(1))
+        host = re.search(r"^CSS_IP=(\S+)", env, re.M).group(1)  # srcds binds the public IP only; loopback routing still applies
         # uptime of the main process
         ts = sh("systemctl", "show", f"css@{n}", "-p", "ExecMainStartTimestampMonotonic", "--value")
         try:
@@ -40,7 +41,7 @@ def main():
         fails = int(open(ff).read() or 0) if os.path.exists(ff) else 0
         if up < GRACE_SEC:
             out.append(f"{n}: grace ({int(up)}s)"); continue
-        ok = a2s("127.0.0.1", port) or a2s("127.0.0.1", port)
+        ok = a2s(host, port) or a2s(host, port)
         fails = 0 if ok else fails + 1
         open(ff, "w").write(str(fails))
         if ok:
