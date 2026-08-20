@@ -79,3 +79,14 @@ Chronological. Each entry says what, why, and the alternative rejected.
   `max_connections 60`, `performance_schema OFF`.
 - **Lesson for future sessions:** after writing any config for a service that drops privileges, verify the
   service actually read it — do not assume a written file is an applied file.
+
+## D-010 (2026-08-20) Bots disabled entirely (operator request)
+- `CSS_BOTQUOTA=0` in every `server/opt/css/etc/instances/*.env`, so `bot_quota 0` is rendered into each
+  mode cfg. Verified across a restart: `pub1`/`dm` come back with `bot_quota "0"` and 0 bots.
+- Each env file carries the previous value in a comment, so re-enabling is one line plus
+  `css-genconf <i> && systemctl restart css@<i>` (pub1/pub2 were 10, dm/gg 8, awp 6).
+- `bot_join_after_player 1` stays in the mode cfgs, so even if a quota is restored later an *empty* server
+  still carries no bots.
+- **Not a bot:** `status` on `m1`/`m2` shows `#2 "SourceTV" BOT active`. That is the SourceTV relay (a fake
+  client by design) which records the match demos MISSION §6.6 asks for — it is not a game bot. Turning it
+  off means no match recording: `CSS_EXTRA_ARGS` in `m1.env`/`m2.env` (`+tv_enable 1`) is the switch.
