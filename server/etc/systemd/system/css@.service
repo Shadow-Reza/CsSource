@@ -14,6 +14,8 @@ User=css-%i
 Group=css
 WorkingDirectory=/opt/css/instances/%i/root
 ExecStart=/opt/css/bin/css-launch %i
+# stdin MUST NOT be a tty: srcds busy-polls its interactive console and burns a full core (see css-launch)
+StandardInput=null
 Restart=always
 RestartSec=5
 TimeoutStopSec=25

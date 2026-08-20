@@ -1,0 +1,49 @@
+# The idle-CPU regression: 7 empty servers were burning ~7.5 of 8 cores. Root cause + fix. (2026-08-20)
+#
+# SYMPTOM (vSphere): "cssource 87 ... 22.1 GHz" with zero players. Guest loadavg 8.5 on an 8-core box.
+#
+# MEASUREMENT BEFORE THE FIX (all servers empty, 0 humans):
+#   pub1 cpu=108%  pub2 cpu=117%  dm cpu=119%  gg cpu=123%  awp cpu=120%  m1 cpu=108%  m2 cpu=121%
+#   ^ m1 and m2 had 0 players AND 0 bots and still burned >100% each -> bots were NOT the cause.
+#
+# HYPOTHESES TESTED ON m1 (0 players, 0 bots, baseline 101%):
+#   fps_max 128            -> 103%   (no effect)
+#   fps_max 66             -> 103%   (no effect)
+#   fps_max 300            -> 104%   (no effect)
+#   sm plugins unload smac_wallhack -> 96%   (no effect)
+#   tv_enable 0            ->  99%   (no effect)
+#
+# ROOT CAUSE — found by inspecting the process file descriptors:
+#   pid=2382 [./srcds_linux] fd0=/dev/pts/5      <-- stdin is a TTY
+#   The css-launch script wrapped srcds in `script -qfec ...` (added earlier in the build purely so console
+#   output would reach journald). With `-console` AND a tty on stdin, srcds runs its interactive console
+#   read loop and BUSY-POLLS stdin, pegging a core per instance regardless of player count.
+#
+# DECISIVE TEST (same instance, only the wrapper changed):
+#   m1 WITH pty wrapper              : 95%
+#   m1 WITHOUT pty (stdin=/dev/null) :  3%
+#   m1 still answering rcon/A2S afterwards: fps=66.66  (nothing else broke)
+#
+# FIX
+#   1. css-launch no longer uses `script`; it execs srcds_run directly (stdin inherits systemd's /dev/null).
+#      `stdbuf -oL -eL` keeps stdout line-buffered so journald still gets output, without a tty.
+#   2. css@.service pins StandardInput=null explicitly so this cannot regress.
+#   Game logs were never affected: they are written to cstrike/logs/*.log and addons/sourcemod/logs/.
+#
+# SECONDARY FIX — bots no longer run on empty servers:
+#   bot_join_after_player 0 -> 1 in every mode cfg, so bots only join once a real player is present.
+#   Measured cost of bots (AFTER the pty fix, so this is the true bot cost):
+#     pub1 empty, 0 bots        :  2%
+#     pub1 with 10 bots         : 13%
+#     pub1 with 10 bots, no WH  : 22%   (noisy sample; bots are ~10-20% of one core either way)
+#   i.e. the pty bug alone cost ~8x more than all the bots put together.
+#
+# ALSO FIXED: fps_max is now rendered per instance to that instance's tickrate (66 or 100) instead of a
+# flat 300 - frames above the tick rate are wasted work under load.
+# ALSO FOUND: sv_hibernate_when_empty / sv_hibernate_ms DO NOT EXIST on CS:S v92 (querying them returns
+# nothing). The server.cfg lines setting them were dead; removed and documented.
+#
+# RESULT (all 7 servers idle, measured over 30 s):
+#   pub1 2%  pub2 2%  dm 2%  gg 2%  awp 2%  m1 4%  m2 4%
+#   TOTAL 18% of ONE core (was ~744%), 1411 MB RSS, loadavg 8.5 -> 0.21
+#   All seven still answer A2S from the internet; all support services still active.

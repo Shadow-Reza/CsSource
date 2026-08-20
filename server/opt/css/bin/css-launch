@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# css-launch <instance> — exec srcds_run for one instance, parameters from /opt/css/etc/instances/<i>.env
-# All seven instances bind the single public IP (MISSION §1); clientport/steamport/tv_port unique per instance.
+# css-launch <instance> â exec srcds_run for one instance, parameters from /opt/css/etc/instances/<i>.env
+# All seven instances bind the single public IP (MISSION Â§1); clientport/steamport/tv_port unique per instance.
 set -euo pipefail
 n="${1:?instance name}"
 ENVF="/opt/css/etc/instances/$n.env"; [ -r "$ENVF" ] || { echo "missing $ENVF" >&2; exit 1; }
@@ -13,11 +13,12 @@ export HOME="/opt/css/instances/$n/home"
 : "${CSS_PORT:?}" "${CSS_CLIENTPORT:?}" "${CSS_STEAMPORT:?}" "${CSS_TVPORT:?}"
 echo "css-launch: instance=$n ip=$CSS_IP port=$CSS_PORT clientport=$CSS_CLIENTPORT steamport=$CSS_STEAMPORT tvport=$CSS_TVPORT tick=$CSS_TICKRATE max=$CSS_MAXPLAYERS map=$CSS_MAP"
 # -norestart: systemd owns restarts. -strictportbind: fail loudly on port collision. -insecure: no VAC (non-Steam). -noupdate: never self-update.
-# srcds fully buffers stdout when it is not a tty, so under systemd almost nothing reaches the journal;
-# `script` gives it a pty -> line-buffered console output in `journalctl -u css@<i>`.
-CMD="./srcds_run -game cstrike -console -ip $CSS_IP -port $CSS_PORT +clientport $CSS_CLIENTPORT -steamport $CSS_STEAMPORT +tv_port $CSS_TVPORT -tickrate $CSS_TICKRATE -maxplayers $CSS_MAXPLAYERS +map $CSS_MAP -norestart -strictportbind -nobreakpad -insecure -noupdate $CSS_EXTRA_ARGS"
-if [ -x /usr/bin/script ]; then
-  exec /usr/bin/script -qfec "$CMD" /dev/null
-else
-  exec $CMD
-fi
+#
+# NEVER give srcds a tty on stdin. With `-console` and a pty it runs its interactive console read loop and
+# busy-polls stdin: measured 95% of a core per instance while COMPLETELY EMPTY (7 idle servers = 7 cores).
+# With stdin on /dev/null the same idle instance costs ~3%. Game logs still land in cstrike/logs/*.log and
+# SourceMod logs in addons/sourcemod/logs/, so journald console output is not worth a core per server.
+# stdbuf line-buffers stdout so whatever srcds prints still reaches journald promptly, without a tty.
+STDBUF=""
+[ -x /usr/bin/stdbuf ] && STDBUF="/usr/bin/stdbuf -oL -eL"
+exec $STDBUF ./srcds_run -game cstrike -console   -ip "$CSS_IP" -port "$CSS_PORT" +clientport "$CSS_CLIENTPORT" -steamport "$CSS_STEAMPORT" +tv_port "$CSS_TVPORT"   -tickrate "$CSS_TICKRATE" -maxplayers "$CSS_MAXPLAYERS" +map "$CSS_MAP"   -norestart -strictportbind -nobreakpad -insecure -noupdate   $CSS_EXTRA_ARGS

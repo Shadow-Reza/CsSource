@@ -53,3 +53,29 @@ Chronological. Each entry says what, why, and the alternative rejected.
 - `PrivateDevices` is not in the MISSION §6.1 list; it was kept because it works in normal operation, but if
   this ever recurs on a box that can't be rebooted, dropping `PrivateDevices=yes` from `css@.service` is the
   mitigation.
+
+## D-008 (2026-08-20) Never give srcds a tty — it cost 7 cores at idle
+- **Found:** with all seven servers empty the box ran at loadavg 8.5 (22.1 GHz in vSphere). Instances with
+  **zero players and zero bots** still burned >100% of a core each, so bots were not the cause. `fps_max`,
+  `smac_wallhack` and SourceTV were each ruled out by measurement. The cause was the `script -qfec` pty
+  wrapper I had added to css-launch so console output would reach journald: with `-console` and a tty on
+  stdin, srcds busy-polls its interactive console. Same instance: **95% with the pty, 3% without**.
+- **Decided:** `css-launch` execs `srcds_run` directly with stdin on `/dev/null` (`stdbuf -oL -eL` keeps
+  stdout line-buffered for journald), and `css@.service` now pins `StandardInput=null` so it cannot regress.
+  Console-in-journald is not worth a core per instance; game logs live in `cstrike/logs/` regardless.
+- **Also:** `bot_join_after_player 1` in every mode cfg (bots only once a human is present; bots measured at
+  ~10-20% of a core per server), `fps_max` rendered to each instance's tickrate instead of a flat 300, and
+  the dead `sv_hibernate_when_empty` / `sv_hibernate_ms` lines removed (those cvars do not exist on v92).
+- **Result:** 7 idle servers went from ~744% to **18% of one core**; loadavg 8.5 -> 0.21.
+- Evidence: `docs/evidence/22-idle-cpu-regression-and-fix.txt`.
+
+## D-009 (2026-08-20) A 0600 my.cnf is silently ignored by mysqld
+- **Found:** `/etc/mysql/mariadb.conf.d/60-chogan.cnf` was written under a `umask 077` in `05-mariadb.sh`,
+  so it was `0600 root:root`. mysqld runs as `mysql` and **silently ignores config files it cannot read** —
+  none of the tuning had ever applied (`skip_name_resolve=0`, `max_connections=151`, defaults throughout).
+  The server was only bound to loopback because that is Ubuntu's packaged default, not because of our file.
+- **Decided:** the provisioning script now `chmod 0644`s the file and ends by SELECTing the values back to
+  prove they took effect. Right-sized for a schema holding a few hundred KB: `innodb_buffer_pool_size 64M`,
+  `max_connections 60`, `performance_schema OFF`.
+- **Lesson for future sessions:** after writing any config for a service that drops privileges, verify the
+  service actually read it — do not assume a written file is an applied file.

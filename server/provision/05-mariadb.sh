@@ -20,16 +20,24 @@ EOS
 fi
 # shellcheck disable=SC1090
 . "$SEC"
+# NOTE: this file MUST be world-readable. mysqld runs as the `mysql` user and silently IGNORES any
+# .cnf it cannot read -- with the 0600 that `umask 077` above would give it, none of these settings
+# applied and the server ran on stock defaults. Always chmod 0644 and verify with a SELECT afterwards.
 cat > /etc/mysql/mariadb.conf.d/60-chogan.cnf <<'EOS'
 [mysqld]
 bind-address = 127.0.0.1
 skip-name-resolve
-max_connections = 200
-innodb_buffer_pool_size = 256M
+# right-sized for this workload: the two Chogan schemas hold a few hundred KB, not gigabytes
+max_connections = 60
+innodb_buffer_pool_size = 64M
+innodb_log_file_size = 32M
+performance_schema = OFF
 innodb_flush_log_at_trx_commit = 2
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
 EOS
+chmod 0644 /etc/mysql/mariadb.conf.d/60-chogan.cnf
+chown root:root /etc/mysql/mariadb.conf.d/60-chogan.cnf
 systemctl enable --now mariadb >/dev/null
 systemctl restart mariadb
 mysql --protocol=socket -uroot <<EOS
@@ -47,4 +55,6 @@ FLUSH PRIVILEGES;
 EOS
 mysql --protocol=socket -uroot -e "SELECT user,host FROM mysql.user WHERE user IN ('$DB_SM_USER','$DB_AGENT_USER'); SHOW DATABASES LIKE 'c%';"
 ss -tlnp | grep 3306
+# prove the tuning file was actually read (a 0600 cnf is silently ignored by mysqld)
+mysql --protocol=socket -uroot -e "SELECT @@skip_name_resolve, @@max_connections, @@innodb_buffer_pool_size/1024/1024 AS pool_mb, @@performance_schema;"
 echo "05-mariadb: OK"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# css-genconf <instance> — render per-instance config into the instance's overlay (merged root must be mounted).
+# css-genconf <instance> â render per-instance config into the instance's overlay (merged root must be mounted).
 # Sources: /opt/css/etc/instances/<i>.env, /opt/css/etc/templates/**, /opt/css/etc/secrets/{db.env,<i>.env}
 # Writes (all inside /opt/css/instances/<i>/root/cstrike):
 #   cfg/server.cfg cfg/instance.cfg cfg/mode_<mode>.cfg cfg/server_secrets.cfg cfg/sourcemod/chogan.cfg
@@ -10,16 +10,17 @@ n="${1:?instance}"; I="/opt/css/instances/$n"; R="$I/root/cstrike"; T=/opt/css/e
 mountpoint -q "$I/root" || { echo "overlay for $n not mounted (systemctl start css-overlay@$n)" >&2; exit 1; }
 set -a; . "/opt/css/etc/instances/$n.env"; . "$SECD/db.env"; set +a
 u="css-$n"
-# per-instance secrets (rcon) — generate once
+# per-instance secrets (rcon) â generate once
 mkdir -p "$SECD"; if [ ! -s "$SECD/$n.env" ]; then (umask 077; echo "RCON_PASSWORD=$(openssl rand -hex 16)" > "$SECD/$n.env"); fi
 set -a; . "$SECD/$n.env"; set +a
 : "${CSS_MODE:?}" "${CSS_HOSTNAME:?}" "${CSS_TICKRATE:=66}" "${CSS_BOTQUOTA:=0}" "${CSS_CONTACT:=}"
 if [ "$CSS_TICKRATE" -ge 100 ]; then MAXUPDATERATE=100; MAXCMDRATE=100; else MAXUPDATERATE=66; MAXCMDRATE=66; fi
-render() { # render <template> <dest> <mode> <owner> � python does the @@VAR@@ substitution (values may contain any char)
-  RENDER_IN="$1" RENDER_OUT="$2.tmp" INSTANCE="$n" MODE="$CSS_MODE" HOSTNAME_="$CSS_HOSTNAME" CONTACT="$CSS_CONTACT" BOTQUOTA="$CSS_BOTQUOTA"   MAXUPDATERATE="$MAXUPDATERATE" MAXCMDRATE="$MAXCMDRATE" RCON_PASSWORD="$RCON_PASSWORD" DB_NAME_SM="$DB_NAME_SM" DB_SM_USER="$DB_SM_USER"   DB_SM_PASS="$DB_SM_PASS" DB_NAME_AGENT="$DB_NAME_AGENT" python3 - <<'PYR'
+FPSMAX="$CSS_TICKRATE"   # never run the frame loop faster than the tick rate
+render() { # render <template> <dest> <mode> <owner> - python does the @@VAR@@ substitution (values may contain any char)
+  RENDER_IN="$1" RENDER_OUT="$2.tmp" INSTANCE="$n" MODE="$CSS_MODE" HOSTNAME_="$CSS_HOSTNAME" CONTACT="$CSS_CONTACT" BOTQUOTA="$CSS_BOTQUOTA"   MAXUPDATERATE="$MAXUPDATERATE" MAXCMDRATE="$MAXCMDRATE" FPSMAX="$FPSMAX" RCON_PASSWORD="$RCON_PASSWORD" DB_NAME_SM="$DB_NAME_SM" DB_SM_USER="$DB_SM_USER"   DB_SM_PASS="$DB_SM_PASS" DB_NAME_AGENT="$DB_NAME_AGENT" python3 - <<'PYR'
 import os
 m={"INSTANCE":"INSTANCE","MODE":"MODE","HOSTNAME":"HOSTNAME_","CONTACT":"CONTACT","BOTQUOTA":"BOTQUOTA","MAXUPDATERATE":"MAXUPDATERATE",
-   "MAXCMDRATE":"MAXCMDRATE","RCON_PASSWORD":"RCON_PASSWORD","DB_NAME_SM":"DB_NAME_SM","DB_SM_USER":"DB_SM_USER","DB_SM_PASS":"DB_SM_PASS","DB_NAME_AGENT":"DB_NAME_AGENT"}
+   "MAXCMDRATE":"MAXCMDRATE","FPSMAX":"FPSMAX","RCON_PASSWORD":"RCON_PASSWORD","DB_NAME_SM":"DB_NAME_SM","DB_SM_USER":"DB_SM_USER","DB_SM_PASS":"DB_SM_PASS","DB_NAME_AGENT":"DB_NAME_AGENT"}
 t=open(os.environ["RENDER_IN"]).read()
 for k,e in m.items(): t=t.replace("@@"+k+"@@", os.environ.get(e,""))
 open(os.environ["RENDER_OUT"],"w").write(t)
